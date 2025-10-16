@@ -20,8 +20,19 @@ async function loadTileRecognitionAI() {
         console.log('🧠 Loading tile recognition AI...');
         tileModel = await tf.loadLayersModel('./models/model.json');
         
-        const response = await fetch('./models/mahjong_labels.json');
-        tileLabels = await response.json();
+       const response = await fetch('./models/mahjong_labels.json');
+const labelData = await response.json();
+
+// Convert label_order array to idx_to_label object
+tileLabels = {
+    idx_to_label: {}
+};
+
+labelData.label_order.forEach((label, index) => {
+    tileLabels.idx_to_label[index.toString()] = label;
+});
+
+console.log('✅ Loaded', labelData.num_classes, 'tile labels');
         
         console.log('✅ AI ready! Can recognize', tileLabels.num_classes, 'tile types');
         return true;
