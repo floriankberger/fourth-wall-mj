@@ -1976,10 +1976,8 @@ window.addEventListener('load', loadTileRecognitionAI);
         }
 
         async function simulateTileDetection() {
-    // Get the captured image
     const capturedImage = document.getElementById('capturedImage');
     
-    // Check if AI is loaded
     if (!tileModel || !tileLabels) {
         console.log('⚠️ AI not loaded, using demo mode');
         useDemoHand();
@@ -1989,13 +1987,45 @@ window.addEventListener('load', loadTileRecognitionAI);
     try {
         console.log('🧠 AI analyzing your hand...');
         
-        // Use AI to recognize tiles in the image
-        const recognizedTiles = await recognizeTilesFromImage(capturedImage);
+        // Step 1: Use Roboflow to detect tile locations
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = capturedImage.naturalWidth || capturedImage.width;
+        canvas.height = capturedImage.naturalHeight || capturedImage.height;
+        ctx.drawImage(capturedImage, 0, 0);
         
-        console.log('✅ AI detected', recognizedTiles.length, 'tiles');
+        const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
         
-        // Convert recognized tiles to hand format
-        gameState.detectedHand = convertTilesToHand(recognizedTiles);
+        const roboflowResponse = await fetch('https://detect.roboflow.com/mahjong-baq4s/12?api_key=AE3m7DRP5tzF16qE0OUD', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: base64Image
+        });
+        
+        const detectionResults = await roboflowResponse.json();
+        console.log('✅ Roboflow detected', detectionResults.predictions.length, 'tiles');
+        
+        // Step 2: For each detected tile, classify it
+        const recognizedTiles = [];
+        
+        for (const detection of detectionResults.predictions) {
+            const tileCanvas = await extractTileRegion(canvas, detection);
+            const tileName = await recognizeSingleTile(tileCanvas);
+            
+            recognizedTiles.push({
+                name: tileName,
+                x: detection.x
+            });
+        }
+        
+        // Sort tiles left to right
+        recognizedTiles.sort((a, b) => a.x - b.x);
+        
+        // Convert to hand format
+        const tileNames = recognizedTiles.map(t => t.name);
+        gameState.detectedHand = convertTilesToHand(tileNames);
         
         displayDetectedHand();
         
@@ -2004,6 +2034,25 @@ window.addEventListener('load', loadTileRecognitionAI);
         alert('TILE RECOGNITION FAILED. USING DEMO HAND.');
         useDemoHand();
     }
+}
+
+// Helper function to extract tile from detected region
+async function extractTileRegion(sourceCanvas, detection) {
+    const tileCanvas = document.createElement('canvas');
+    tileCanvas.width = 128;
+    tileCanvas.height = 128;
+    const ctx = tileCanvas.getContext('2d');
+    
+    // Roboflow returns center x, y, width, height
+    const x = detection.x - detection.width / 2;
+    const y = detection.y - detection.height / 2;
+    const w = detection.width;
+    const h = detection.height;
+    
+    // Draw and resize to 128x128
+    ctx.drawImage(sourceCanvas, x, y, w, h, 0, 0, 128, 128);
+    
+    return tileCanvas;
 }
 
 // Backup demo function
@@ -2022,48 +2071,6 @@ function useDemoHand() {
     
     gameState.detectedHand = exampleHands[0];
     displayDetectedHand();
-}
-
-// AI recognition function
-async function recognizeTilesFromImage(imageElement) {
-    // This will analyze the image and return detected tiles
-    // For now, using a simple grid-based approach
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Set canvas size
-    canvas.width = imageElement.naturalWidth || imageElement.width;
-    canvas.height = imageElement.naturalHeight || imageElement.height;
-    
-    // Draw image
-    ctx.drawImage(imageElement, 0, 0);
-    
-    // For MVP: assume 14 tiles in a row
-    // In production, you'd use object detection here
-    const tileWidth = canvas.width / 14;
-    const recognizedTiles = [];
-    
-    for (let i = 0; i < 14; i++) {
-        // Extract tile region
-        const tileCanvas = document.createElement('canvas');
-        tileCanvas.width = 128;
-        tileCanvas.height = 128;
-        const tileCtx = tileCanvas.getContext('2d');
-        
-        // Copy tile region and resize to 128x128
-        tileCtx.drawImage(
-            canvas,
-            i * tileWidth, 0, tileWidth, canvas.height,
-            0, 0, 128, 128
-        );
-        
-        // Recognize this tile
-        const tileName = await recognizeSingleTile(tileCanvas);
-        recognizedTiles.push(tileName);
-    }
-    
-    return recognizedTiles;
 }
 
 // Recognize a single tile
