@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mahjong Scorer - Fourth Wall</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Confetti animation */
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            z-index: 9999;
+            pointer-events: none;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        /* Victory glow animation */
+        @keyframes victory-glow {
+            0%, 100% {
+                box-shadow: 0 0 30px rgba(212, 175, 55, 0.4), 0 8px 24px rgba(0,0,0,0.15);
+            }
+            50% {
+                box-shadow: 0 0 60px rgba(212, 175, 55, 0.7), 0 8px 24px rgba(0,0,0,0.15);
+            }
+        }
+
+        .victory-glow {
+            animation: victory-glow 2s ease-in-out infinite;
+        }
+
+        /* Tile rotation animation for home screen */
+        @keyframes gentle-rotate {
+            0%, 100% {
+                transform: rotateY(0deg) rotateX(5deg);
+            }
+            50% {
+                transform: rotateY(180deg) rotateX(5deg);
+            }
+        }
+
+        .rotating-tile {
+            animation: gentle-rotate 4s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #2d5016;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,.03) 2px,
+                    rgba(0,0,0,.03) 4px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,.03) 2px,
+                    rgba(0,0,0,.03) 4px
+                );
+            color: #2c3e50;
+            min-height: 100vh;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a3510 0%, #2d5016 100%);
+            border-bottom: 3px solid #d4af37;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .header-content {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: #f8f5e6;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Home Screen */
+        .main-actions {
+            display: grid;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .action-card {
+            background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            border: 3px solid rgba(212, 175, 55, 0.4);
+            border-radius: 12px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .action-card:hover {
+            border-color: #d4af37;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            background: linear-gradient(135deg, rgba(248, 245, 230, 1) 0%, rgba(255, 255, 255, 1) 100%);
+        }
+
+        .action-card:active {
+            transform: translateY(-2px);
+        }
+
+        .action-icon {
+            font-size: 48px;
+            flex-shrink: 0;
+        }
+
+        .action-content h2 {
+            font-size: 20px;
+            margin-bottom: 0;
+            color: #2c3e50;
+            line-height: 1;
+        }
+
+        .action-content p {
+            font-size: 14px;
+            color: #6c757d;
+            line-height: 1.4;
+        }
+
+        .badge {
+            background: #769656;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+
+        /* Camera Screen */
+        .camera-container {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+            max-height: 50vh;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: auto;
+            display: none;
+            max-height: 50vh;
+            object-fit: cover;
+        }
+
+        #videoElement.active {
+            display: block;
+        }
+
+        #capturedImage {
+            width: 100%;
+            height: auto;
+            display: none;
+            max-height: 50vh;
+            object-fit: contain;
+        }
+
+        #capturedImage.active {
+            display: block;
+        }
+
+        .camera-placeholder {
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .camera-placeholder.hidden {
+            display: none;
+        }
+
+        .camera-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(118, 150, 86, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .arrangement-example {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e4e8;
+        }
+
+        .arrangement-example h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .example-visual {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .example-meld {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .example-tile {
+            width: 32px;
+            height: 44px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .example-gap {
+            width: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #769656;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .instruction-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .instruction-list li {
+            padding: 8px 0;
+            color: #6c757d;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .instruction-list li::before {
+            content: "✓";
+            color: #769656;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .help-toggle {
+            background: #f8f9fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+        }
+
+        .help-toggle:hover {
+            background: #e9ecef;
+        }
+
+        .help-toggle .title {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 15px;
+        }
+
+        .help-toggle .icon {
+            font-size: 20px;
+            color: #6c757d;
+        }
+
+        .help-content {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .help-content.active {
+            display: block;
+        }
+
+        .capture-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: white;
+            border: 4px solid #769656;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+            transition: all 0.2s;
+        }
+
+        .capture-btn:active {
+            transform: scale(0.95);
+        }
+
+        .capture-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Toggle Section */
+        .toggle-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #e1e4e8;
+        }
+
+        .toggle-section h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .toggle-grid.single {
+            grid-template-columns: 1fr;
+        }
+
+        .toggle-option {
+            background: #f8f9fa;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .toggle-option:hover {
+            background: #f0f0f0;
+        }
+
+        .toggle-option.selected {
+            background: #769656;
+            color: white;
+            border-color: #769656;
+        }
+
+        .toggle-option .label {
+            font-size: 15px;
+        }
+
+        .toggle-option .sublabel {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        /* Button Styles */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #769656;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5f7a44;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #6c757d;
+            border: 2px solid #e1e4e8;
+        }
+
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        /* Results Screen */
+        .result-hero {
+            background: linear-gradient(135deg, rgba(248, 245, 230, 0.98) 0%, rgba(255, 253, 245, 0.98) 100%);
+            color: #2d5016;
+            border-radius: 16px;
+            padding: 20px 20px;
+            text-align: center;
+            margin-bottom: 12px;
+            border: 4px solid #d4af37;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-hero::before {
+            content: '';
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            right: 6px;
+            bottom: 6px;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            pointer-events: none;
+        }
+
+        .result-hero::after {
+            content: '🏆';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 32px;
+            opacity: 0.1;
+        }
+
+        .result-hero .points {
+            font-size: 72px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .result-hero .label {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .result-hero .payout {
+            font-size: 56px;
+            font-weight: 700;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .coin {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .coin-1 { background: white; color: #2c3e50; border-color: #dee2e6; }
+        .coin-2 { background: #007bff; color: white; }
+        .coin-5 { background: #28a745; color: white; }
+        .coin-10 { background: #dc3545; color: white; }
+        .coin-20 { background: #ffc107; color: #2c3e50; }
+
+        .result-hero .payout-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Breakdown */
+        .breakdown-card {
+            background: rgba(248, 245, 230, 0.95);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .breakdown-card h3 {
+            color: #2d5016;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .breakdown-item:last-of-type {
+            border-bottom: none;
+        }
+
+        .breakdown-item .name {
+            font-size: 14px;
+            color: #2d5016;
+        }
+
+        .breakdown-item .detail {
+            font-size: 13px;
+            color: #6c757d;
+            margin-left: 4px;
+        }
+
+        .breakdown-item .points {
+            font-weight: 700;
+            color: #2d5016;
+            font-size: 16px;
+        }
+
+        .breakdown-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0 0;
+            margin-top: 12px;
+            border-top: 2px solid #d4af37;
+            font-weight: 700;
+            font-size: 18px;
+            color: #2d5016;
+        }
+
+        /* Detected Hand Display */
+        .detected-hand {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #e1e4e8;
+        }
+
+        .detected-hand h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
+
+        .tiles-display {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tile {
+            width: auto;
+            min-width: 36px;
+            height: 48px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 2px 6px;
+            color: #2c3e50;
+        }
+
+        .tile.bamboo { 
+            border-color: #28a745; 
+            color: #28a745; 
+            background: linear-gradient(135deg, #f0fff4 0%, #e8f5e9 100%);
+        }
+        .tile.character { 
+            border-color: #dc3545; 
+            color: #dc3545; 
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+        }
+        .tile.dot { 
+            border-color: #007bff; 
+            color: #007bff; 
+            background: linear-gradient(135deg, #f0f8ff 0%, #e3f2fd 100%);
+        }
+        .tile.wind { 
+            border-color: #2c3e50; 
+            color: #2c3e50; 
+            font-weight: 700; 
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        .tile.dragon { 
+            border-color: #d4af37; 
+            color: #d4af37; 
+            font-weight: 700; 
+            background: linear-gradient(135deg, #fffef0 0%, #fef9e7 100%);
+        }
+
+        .tile-divider {
+            width: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+
+        /* Utility */
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        /* Back Button */
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: #f8f5e6;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #769656;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Flower Selection */
+        .flower-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .flower-option {
+            background: #f8f9fa;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 14px 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .flower-option .label {
+            font-size: 11px;
+            margin-top: 6px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .flower-option:hover {
+            background: #f0f0f0;
+        }
+
+        .flower-option.selected {
+            background: #769656;
+            border-color: #769656;
+            color: white;
+        }
+
+        .flower-option.selected .label {
+            color: white;
+        }
+
+        /* Alert/Notification */
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .alert-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 4px;
+        }
+
+        .alert-message {
+            font-size: 14px;
+            color: #856404;
+        }
+
+        /* Menu Modal */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-overlay.active {
+            display: flex;
+        }
+
+        .menu-modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .menu-header {
+            background: linear-gradient(135deg, #1a3510 0%, #2d5016 100%);
+            color: #f8f5e6;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .menu-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .menu-close {
+            background: none;
+            border: none;
+            color: #f8f5e6;
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .menu-content {
+            padding: 20px;
+        }
+
+        .menu-item {
+            padding: 16px;
+            border-bottom: 1px solid #e1e4e8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #f8f9fa;
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item-icon {
+            font-size: 24px;
+        }
+
+        .menu-item-text {
+            flex: 1;
+        }
+
+        .menu-item-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .menu-item-subtitle {
+            font-size: 13px;
+            color: #6c757d;
+        }
+    
+        .tile-editor-option {
+            background: #f8f9fa;
+            border: 2px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 10px 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .tile-editor-option:hover:not(.disabled) {
+            background: #e9ecef;
+            border-color: #769656;
+        }
+
+        .tile-editor-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #f8f9fa;
+        }
+
+        .tile-editor-option.character {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .tile-editor-option.bamboo {
+            border-color: #28a745;
+            color: #28a745;
+        }
+
+        .tile-editor-option.dot {
+            border-color: #007bff;
+            color: #007bff;
+        }
+
+        .tile-editor-option.wind {
+            border-color: #2c3e50;
+            color: #2c3e50;
+        }
+
+        .tile-editor-option.dragon {
+            border-color: #d4af37;
+            color: #d4af37;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <button class="back-btn" id="backBtn" style="display: none;">←</button>
+            <div class="logo" style="font-size: 18px; font-weight: 700; color: #f8f5e6; letter-spacing: 1px; cursor: pointer;" onclick="goToScreen('homeScreen')">
+                FOURTH WALL MJ
+            </div>
+            <button class="menu-btn" onclick="toggleMenu()">☰</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Home Screen -->
+        <div class="screen active" id="homeScreen">
+            <!-- Name Input -->
+            <div id="nameInputSection" style="background: rgba(248, 245, 230, 0.95); border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 2px solid rgba(212, 175, 55, 0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div id="nameEntryForm">
+                    <h3 style="font-size: 18px; margin-bottom: 12px; color: #2d5016; font-weight: 600;">👋🏽 WHO'S PLAYING?</h3>
+                    <p style="font-size: 14px; color: #6c757d; margin-bottom: 16px;">FIRST NAME + LAST INITIAL</p>
+                    <input 
+                        type="text" 
+                        id="playerName" 
+                        placeholder="E.G. STEPHAN K"
+                        style="width: 100%; padding: 14px; border: 2px solid #d4af37; border-radius: 8px; font-size: 16px; font-family: inherit; background: white; transition: all 0.3s; text-transform: uppercase;"
+                        value=""
+                    />
+                </div>
+                <div id="welcomeBackMessage" style="display: none; text-align: center;">
+                    <h3 style="font-size: 22px; margin-bottom: 8px; color: #2d5016; font-weight: 700;">WELCOME BACK,</h3>
+                    <div style="font-size: 28px; color: #d4af37; font-weight: 700; letter-spacing: 0.5px;" id="welcomeBackName"></div>
+                </div>
+                <div id="nameDisplay" style="display: none; margin-top: 12px; padding: 12px; background: rgba(45, 80, 22, 0.1); border-radius: 6px; color: #2d5016; font-weight: 600; border-left: 4px solid #2d5016;">
+                    ✓ READY TO PLAY: <span id="currentPlayerName"></span>
+                </div>
+            </div>
+
+            <div class="main-actions">
+                <div class="action-card" onclick="goToScreen('cameraScreen')">
+                    <div class="action-icon">📷</div>
+                    <div class="action-content">
+                        <h2>FOURTH WALL CAMERA</h2>
+                    </div>
+                </div>
+
+                <div class="action-card disabled" style="opacity: 0.6; cursor: not-allowed;">
+                    <div class="action-icon">🔍</div>
+                    <div class="action-content">
+                        <h2>IDENTIFY TILES</h2>
+                        <p>COMING SOON</p>
+                    </div>
+                </div>
+
+                <div class="action-card disabled" style="opacity: 0.6; cursor: not-allowed;">
+                    <div class="action-icon">💡</div>
+                    <div class="action-content">
+                        <h2>HAND ANALYSIS</h2>
+                        <p>COMING SOON</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Screen -->
+        <div class="screen" id="cameraScreen">
+            <div class="help-toggle" onclick="toggleHelp()">
+                <div class="title">📋 TILE ARRANGEMENT GUIDE</div>
+                <div class="icon" id="helpIcon">▼</div>
+            </div>
+
+            <div class="help-content" id="helpContent">
+                <div class="arrangement-example">
+                    <div class="example-visual">
+                        <div class="example-meld">
+                            <div class="example-tile">🎋</div>
+                            <div class="example-tile">🎋</div>
+                            <div class="example-tile">🎋</div>
+                        </div>
+                        <div class="example-gap">•</div>
+                        <div class="example-meld">
+                            <div class="example-tile">⚫</div>
+                            <div class="example-tile">⚫</div>
+                            <div class="example-tile">⚫</div>
+                        </div>
+                        <div class="example-gap">•</div>
+                        <div class="example-meld">
+                            <div class="example-tile">🈚</div>
+                            <div class="example-tile">🈚</div>
+                            <div class="example-tile">🈚</div>
+                        </div>
+                        <div class="example-gap">•</div>
+                        <div class="example-meld">
+                            <div class="example-tile">🀄</div>
+                            <div class="example-tile">🀄</div>
+                            <div class="example-tile">🀄</div>
+                        </div>
+                        <div class="example-gap">•</div>
+                        <div class="example-meld">
+                            <div class="example-tile">🈈</div>
+                            <div class="example-tile">🈈</div>
+                        </div>
+                    </div>
+                    <ul class="instruction-list">
+                        <li>GROUP INTO MELDS, LEAVE GAPS BETWEEN EACH</li>
+                        <li>PUT PAIR LAST</li>
+                        <li>ALL TILES FLAT AND VISIBLE</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="camera-container">
+                <video id="videoElement" autoplay playsinline></video>
+                <img id="capturedImage" alt="Captured hand" />
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+                        <div>CLICK CAPTURE BUTTON TO START CAMERA</div>
+                    </div>
+                </div>
+                <div class="camera-hint">ARRANGE TILES IN MELDS</div>
+            </div>
+
+            <button class="capture-btn" onclick="capturePhoto()" id="captureBtn">
+                <span id="captureBtnIcon">📷</span>
+            </button>
+
+            <div id="processingAlert" class="alert" style="display: none;">
+                <div class="alert-icon">🔄</div>
+                <div class="alert-content">
+                    <div class="alert-title">ANALYZING YOUR HAND...</div>
+                    <div class="alert-message">OUR AI IS DETECTING TILES AND CALCULATING YOUR SCORE</div>
+                </div>
+            </div>
+
+            <div class="detected-hand" style="display: none; padding: 12px;" id="detectedHandPreview">
+                <h3 style="font-size: 13px; margin-bottom: 8px;">✓ HAND DETECTED</h3>
+                <div class="tiles-display" id="detectedTilesDisplay" style="gap: 3px;">
+                    <!-- Tiles will be dynamically inserted here -->
+                </div>
+                <div style="margin-top: 8px;">
+                    <button class="btn btn-secondary" onclick="retakePhoto()" style="padding: 8px 16px; width: auto; display: inline-block; font-size: 13px;">
+                        🔄 RETAKE
+                    </button>
+                </div>
+            </div>
+
+            <div style="display: none;" id="togglesSection">
+                <!-- Seat Wind -->
+                <div class="toggle-section">
+                    <h3>🧭 SEAT WIND</h3>
+                    <div class="toggle-grid">
+                        <div class="toggle-option selected" onclick="selectToggle(this, 'seatWind', 'east')">
+                            <div class="label">東 EAST</div>
+                            <div class="sublabel">DEALER</div>
+                        </div>
+                        <div class="toggle-option" onclick="selectToggle(this, 'seatWind', 'south')">
+                            <div class="label">南 SOUTH</div>
+                        </div>
+                        <div class="toggle-option" onclick="selectToggle(this, 'seatWind', 'west')">
+                            <div class="label">西 WEST</div>
+                        </div>
+                        <div class="toggle-option" onclick="selectToggle(this, 'seatWind', 'north')">
+                            <div class="label">北 NORTH</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Round Wind -->
+                <div class="toggle-section">
+                    <h3>🌬️ ROUND WIND</h3>
+                    <div class="toggle-grid">
+                        <div class="toggle-option selected" onclick="selectToggle(this, 'roundWind', 'east')">
+                            <div class="label">東 EAST</div>
+                        </div>
+                        <div class="toggle-option" onclick="selectToggle(this, 'roundWind', 'south')">
+                            <div class="label">南 SOUTH</div>
+                        </div>
+                        <div class="toggle-option" onclick="selectToggle(this, 'roundWind', 'west')">
+                            <div class="label">西 WEST</div>
+                        </div>
+                        <div class="toggle-option" onclick="selectToggle(this, 'roundWind', 'north')">
+                            <div class="label">北 NORTH</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Win Conditions (Multi-Select) -->
+                <div class="toggle-section">
+                    <h3>🎯 ADDITIONAL POINTS</h3>
+                    <div class="toggle-grid single">
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'selfDraw')">
+                            <div class="label">SELF DRAW (+1 PT)</div>
+                        </div>
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'concealed')">
+                            <div class="label">CONCEALED HAND (+1 PT)</div>
+                        </div>
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'robbedKong')">
+                            <div class="label">ROBBING THE KONG (+1 PT)</div>
+                        </div>
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'lastTile')">
+                            <div class="label">LAST TILE (+1 PT)</div>
+                        </div>
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'kongFlowerReplacement')">
+                            <div class="label">KONG/FLOWER REPLACEMENT (+2 PT)</div>
+                        </div>
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'blessingHeaven')">
+                            <div class="label">WIN ON DRAW - DEALER (+13 PT)</div>
+                        </div>
+                        <div class="toggle-option" onclick="toggleSpecial(this, 'blessingEarth')">
+                            <div class="label">WIN ON FIRST DISCARD (+13 PT)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flowers -->
+                <div class="toggle-section">
+                    <h3>🌸 FLOWERS & SEASONS</h3>
+                    <div class="flower-grid">
+                        <div class="flower-option" onclick="toggleFlower(this, 'f1')">
+                            <div>🪻</div>
+                            <div class="label">F1</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 'f2')">
+                            <div>🌸</div>
+                            <div class="label">F2</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 'f3')">
+                            <div>🌼</div>
+                            <div class="label">F3</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 'f4')">
+                            <div>🎋</div>
+                            <div class="label">F4</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 's1')">
+                            <div>🌱</div>
+                            <div class="label">S1</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 's2')">
+                            <div>☀️</div>
+                            <div class="label">S2</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 's3')">
+                            <div>🍂</div>
+                            <div class="label">S3</div>
+                        </div>
+                        <div class="flower-option" onclick="toggleFlower(this, 's4')">
+                            <div>❄️</div>
+                            <div class="label">S4</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="calculateScore()">Calculate Score</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div class="screen" id="resultsScreen">
+            <!-- Compact Hero -->
+            <div class="result-hero" style="padding: 16px; margin-bottom: 8px;">
+                <div id="victoryPhrase" style="display: none; font-size: 14px; font-weight: 600; color: #d4af37; margin-bottom: 6px; letter-spacing: 1px;">
+                    食糊 • SIK WU
+                </div>
+                
+                <!-- NAME -->
+                <div style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #2d5016; letter-spacing: 0.5px; text-transform: uppercase;" id="winnerName">PLAYER</div>
+                
+                <!-- FAAN and PAYOUT in two columns -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+                    <!-- FAAN -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #2d5016; opacity: 0.8;">FAAN</div>
+                        <div style="font-size: 48px; color: #2d5016; font-weight: 700; line-height: 1;"><span id="totalPoints">0</span></div>
+                    </div>
+                    
+                    <!-- PAYOUT -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #2d5016; opacity: 0.8;">PAYOUT</div>
+                        <div style="font-size: 48px; color: #2d5016; font-weight: 700; line-height: 1;"><span id="payoutAmount">0</span></div>
+                    </div>
+                </div>
+                
+                <!-- Colored coins with simple label -->
+                <div style="margin-bottom: 8px;">
+                    <div class="payout" id="payoutCoins" style="gap: 6px; font-size: 28px; margin-bottom: 6px; justify-content: center;"></div>
+                    <div style="font-size: 11px; color: #2d5016; font-weight: 600; text-transform: uppercase;" id="payoutDescription">PER PLAYER</div>
+                </div>
+
+                <div style="font-size: 10px; opacity: 0.7; margin-top: 2px; color: #2d5016; text-transform: uppercase;" id="winTypeLabel">DEALER / SELF DRAW</div>
+            </div>
+
+            <!-- Ultra Compact Hand Display -->
+            <div style="margin-bottom: 8px; background: rgba(248, 245, 230, 0.95); padding: 10px; border-radius: 8px; border: 2px solid rgba(212, 175, 55, 0.3);">
+                <h3 style="font-size: 12px; margin-bottom: 6px; color: #2d5016; font-weight: 700; text-transform: uppercase;">🀄 YOUR HAND</h3>
+                <div class="tiles-display" style="justify-content: center; gap: 3px;" id="resultsTilesDisplay">
+                    <!-- Tiles will be populated -->
+                </div>
+            </div>
+
+            <!-- Ultra Compact Breakdown -->
+            <div style="background: rgba(248, 245, 230, 0.95); border-radius: 8px; padding: 10px; margin-bottom: 8px; border: 2px solid rgba(212, 175, 55, 0.3);">
+                <h3 style="color: #2d5016; font-weight: 700; letter-spacing: 0.5px; font-size: 12px; margin-bottom: 6px; text-transform: uppercase;">📊 BREAKDOWN</h3>
+                <div id="breakdownItems" style="font-size: 12px;">
+                    <!-- Breakdown items -->
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0 0; margin-top: 6px; border-top: 2px solid #d4af37; font-weight: 700; font-size: 14px; color: #2d5016;">
+                    <div>TOTAL</div>
+                    <div><span id="totalPointsBreakdown">0</span> PT</div>
+                </div>
+            </div>
+
+            <!-- Compact Buttons -->
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
+                <button class="btn btn-secondary" onclick="backToToggles()" style="padding: 12px; font-size: 14px;">BACK</button>
+                <button class="btn btn-primary" onclick="resetAndScore()" style="padding: 12px; font-size: 14px;">NEW HAND</button>
+            </div>
+        </div>
+
+        <!-- Payout Reference Screen -->
+        <div class="screen" id="payoutScreen">
+            <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h2 style="margin-bottom: 16px; color: #2c3e50;">🪙 PAYOUT REFERENCE</h2>
+                <p style="color: #6c757d; margin-bottom: 20px;">QUICK LOOKUP FOR COIN VALUES BASED ON POINTS AND WIN CONDITIONS</p>
+                
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; margin-bottom: 12px; color: #2c3e50;">COIN DENOMINATIONS</h3>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <div class="coin coin-1" style="width: 40px; height: 40px; font-size: 16px;">1</div>
+                        <div class="coin coin-2" style="width: 40px; height: 40px; font-size: 16px;">2</div>
+                        <div class="coin coin-5" style="width: 40px; height: 40px; font-size: 16px;">5</div>
+                        <div class="coin coin-10" style="width: 40px; height: 40px; font-size: 16px;">10</div>
+                        <div class="coin coin-20" style="width: 40px; height: 40px; font-size: 16px;">20</div>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background: #769656; color: white;">
+                                <th style="padding: 12px; text-align: left; border: 1px solid #5f7a44;">POINTS</th>
+                                <th style="padding: 12px; text-align: center; border: 1px solid #5f7a44;">NON-DEALER<br>DISCARD</th>
+                                <th style="padding: 12px; text-align: center; border: 1px solid #5f7a44;">DEALER<br>DISCARD</th>
+                                <th style="padding: 12px; text-align: center; border: 1px solid #5f7a44;">NON-DEALER<br>SELF DRAW</th>
+                                <th style="padding: 12px; text-align: center; border: 1px solid #5f7a44;">DEALER<br>SELF DRAW</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: white;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">1</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">1</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">2</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">1</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">1</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">2</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">2</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">3</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">2</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">2</td>
+                            </tr>
+                            <tr style="background: white;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">3</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">4</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">6</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">3</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">5</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">4</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">8</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">12</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">6</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">9</td>
+                            </tr>
+                            <tr style="background: white;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">5</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">16</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">24</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">12</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">18</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">6</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">32</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">48</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">24</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">36</td>
+                            </tr>
+                            <tr style="background: white;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">7</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">40</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">60</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">30</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">45</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">8</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">50</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">70</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">35</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">50</td>
+                            </tr>
+                            <tr style="background: white;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">9</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">60</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">80</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">40</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">55</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">10</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">70</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">100</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">45</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">70</td>
+                            </tr>
+                            <tr style="background: white;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">11</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">80</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">110</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">50</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">75</td>
+                            </tr>
+                            <tr style="background: #f8f9fa;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">12</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">90</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">120</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">55</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center;">80</td>
+                            </tr>
+                            <tr style="background: #fffbea;">
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; font-weight: 600;">13+</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center; font-weight: 600;">100</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center; font-weight: 600;">140</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center; font-weight: 600;">60</td>
+                                <td style="padding: 10px; border: 1px solid #e1e4e8; text-align: center; font-weight: 600;">90</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px; font-size: 13px; color: #6c757d;">
+                    <strong>NOTE:</strong> FOR SELF DRAW WINS, THE PAYOUT SHOWN IS PER PLAYER (MULTIPLY BY 3 FOR TOTAL). FOR DISCARD WINS, THE DISCARDER PAYS THE FULL AMOUNT.
+                </div>
+            </div>
+        </div>
+
+        <!-- History Screen -->
+        <div class="screen" id="historyScreen">
+            <!-- Summary Stats -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+                <div style="background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%); border: 2px solid rgba(212, 175, 55, 0.4); border-radius: 12px; padding: 16px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700; color: #2d5016; margin-bottom: 4px;" id="totalWins">0</div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase;">WINS</div>
+                </div>
+                <div style="background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%); border: 2px solid rgba(212, 175, 55, 0.4); border-radius: 12px; padding: 16px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700; color: #d4af37; margin-bottom: 4px;" id="highestScore">0</div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase;">HIGH SCORE</div>
+                </div>
+                <div style="background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%); border: 2px solid rgba(212, 175, 55, 0.4); border-radius: 12px; padding: 16px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 700; color: #769656; margin-bottom: 4px;" id="totalCoins">0</div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase;">TOTAL COINS</div>
+                </div>
+            </div>
+
+            <!-- Sort Options -->
+            <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center;">
+                <div style="font-size: 13px; font-weight: 600; color: #2c3e50;">SORT:</div>
+                <button class="btn" onclick="sortHistory('newest')" id="sortNewest" style="padding: 8px 16px; font-size: 13px; background: #769656; color: white; width: auto;">NEWEST</button>
+                <button class="btn" onclick="sortHistory('highest')" id="sortHighest" style="padding: 8px 16px; font-size: 13px; background: #f8f9fa; color: #6c757d; border: 2px solid #e1e4e8; width: auto;">HIGHEST</button>
+            </div>
+
+            <!-- History List -->
+            <div id="historyList">
+                <!-- History items will be dynamically inserted -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="historyEmpty" style="display: none; text-align: center; padding: 60px 20px; color: #6c757d;">
+                <div style="font-size: 64px; margin-bottom: 16px;">🀄</div>
+                <h3 style="font-size: 18px; margin-bottom: 8px; color: #2c3e50;">NO WINS YET</h3>
+                <p style="font-size: 14px;">YOUR WINNING HANDS WILL APPEAR HERE</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Modal -->
+    <div class="menu-overlay" id="menuOverlay" onclick="closeMenuIfOutside(event)">
+        <div class="menu-modal" onclick="event.stopPropagation()">
+            <div class="menu-header">
+                <h2>MENU</h2>
+                <button class="menu-close" onclick="toggleMenu()">×</button>
+            </div>
+            <div class="menu-content">
+                <div class="menu-item" onclick="goToHistory()">
+                    <div class="menu-item-icon">📊</div>
+                    <div class="menu-item-text">
+                        <div class="menu-item-title">SCORE HISTORY</div>
+                        <div class="menu-item-subtitle">View your winning hands</div>
+                    </div>
+                </div>
+                <div class="menu-item" onclick="changeName()">
+                    <div class="menu-item-icon">✏️</div>
+                    <div class="menu-item-text">
+                        <div class="menu-item-title">CHANGE NAME</div>
+                        <div class="menu-item-subtitle">Update your player name</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Screen navigation
+        let currentScreen = 'homeScreen';
+        let videoStream = null;
+        let cameraActive = false;
+
+        // State tracking
+        let gameState = {
+            seatWind: 'east',
+            roundWind: 'east',
+            winConditions: [],
+            flowers: [],
+            detectedHand: null,
+            playerName: '',
+            history: [] // Array of past winning hands
+        };
+
+        // Scoring rules database (from Fourth Wall scoring PDF)
+        const scoringRules = {
+            // Basic hands
+            'allChow': { points: 1, name: 'All Chow', description: 'Every set is a sequence' },
+            'dragonPong': { points: 1, name: 'Dragon Pong', description: 'Pong/Kong of any dragon' },
+            'roundWind': { points: 1, name: 'Round Wind', description: 'Pong/Kong of the current wind' },
+            'seatWind': { points: 1, name: 'Seat Wind', description: "Pong/Kong of the player's wind" },
+            'selfDraw': { points: 1, name: 'Self Draw', description: 'Winning by drawing a tile' },
+            'concealed': { points: 1, name: 'Concealed Hand', description: 'No melds shown' },
+            'robbedKong': { points: 1, name: 'Robbing the Kong', description: "Won off another player's kong" },
+            'lastTile': { points: 1, name: 'Last Tile', description: 'Last tile in game' },
+            'selfFlower': { points: 1, name: 'Self Flower', description: 'Either flower of your seat' },
+            'noFlowers': { points: 1, name: 'No Flowers', description: 'Having no flowers' },
+            
+            // 2 point
+            'flowerSet': { points: 2, name: 'Flower Set', description: 'Full set of flowers of same color' },
+            'kongFlowerReplacement': { points: 2, name: 'Kong/Flower Replacement', description: 'Won from replacement tile' },
+            
+            // 3 point
+            'allPongs': { points: 3, name: 'All Pongs', description: 'All triplets/kongs' },
+            'mixedOneSuit': { points: 3, name: 'Mixed One Suit', description: 'Honor tiles + one suit' },
+            
+            // 4 point
+            'sevenPairs': { points: 4, name: 'All Pairs', description: '7 unique pairs' },
+            
+            // 5 point
+            'minorDragons': { points: 5, name: 'Minor Dragons', description: '2 dragon pongs + pair of 3rd' },
+            
+            // 6 point
+            'minorWinds': { points: 6, name: 'Minor Winds', description: '3 winds + pair of 4th' },
+            
+            // 7 point
+            'pureOneSuit': { points: 7, name: 'Pure One Suit', description: 'All tiles from single suit' },
+            
+            // 8 point
+            'allFlowers': { points: 8, name: 'All Flowers', description: 'All 8 flowers' },
+            'greatDragons': { points: 8, name: 'Great Dragons', description: 'All 3 dragons' },
+            
+            // 10 point
+            'allHonors': { points: 10, name: 'All Honors', description: 'All honor tiles' },
+            'selfTriplets': { points: 10, name: 'Self Triplets', description: '4 concealed pongs' },
+            'orphans': { points: 10, name: 'Orphans', description: 'Pongs/Kongs of 1s and 9s only' },
+            'nineGates': { points: 10, name: '9 Gates', description: '1112345678999 in one suit' },
+            
+            // 13 point
+            'greatWinds': { points: 13, name: 'Great Winds', description: 'All 4 winds' },
+            'thirteenOrphans': { points: 13, name: 'Thirteen Orphans', description: 'One of each terminal and honor' },
+            'bambooForest': { points: 13, name: 'Bamboo Forest', description: 'All green tiles' },
+            'allKongs': { points: 13, name: 'All Kongs', description: '4 Kongs' },
+            'blessingHeaven': { points: 13, name: 'Blessing of Heaven', description: 'Dealer wins with starting hand' },
+            'blessingEarth': { points: 13, name: 'Blessing of Earth', description: 'Won on first discard' }
+        };
+
+        // Payout table
+        const payoutTable = {
+            1: { nonDealerDiscard: 1, dealerDiscard: 2, nonDealerSelf: 1, dealerSelf: 1 },
+            2: { nonDealerDiscard: 2, dealerDiscard: 3, nonDealerSelf: 2, dealerSelf: 2 },
+            3: { nonDealerDiscard: 4, dealerDiscard: 6, nonDealerSelf: 3, dealerSelf: 5 },
+            4: { nonDealerDiscard: 8, dealerDiscard: 12, nonDealerSelf: 6, dealerSelf: 9 },
+            5: { nonDealerDiscard: 16, dealerDiscard: 24, nonDealerSelf: 12, dealerSelf: 18 },
+            6: { nonDealerDiscard: 32, dealerDiscard: 48, nonDealerSelf: 24, dealerSelf: 36 },
+            7: { nonDealerDiscard: 40, dealerDiscard: 60, nonDealerSelf: 30, dealerSelf: 45 },
+            8: { nonDealerDiscard: 50, dealerDiscard: 70, nonDealerSelf: 35, dealerSelf: 50 },
+            9: { nonDealerDiscard: 60, dealerDiscard: 80, nonDealerSelf: 40, dealerSelf: 55 },
+            10: { nonDealerDiscard: 70, dealerDiscard: 100, nonDealerSelf: 45, dealerSelf: 70 },
+            11: { nonDealerDiscard: 80, dealerDiscard: 110, nonDealerSelf: 50, dealerSelf: 75 },
+            12: { nonDealerDiscard: 90, dealerDiscard: 120, nonDealerSelf: 55, dealerSelf: 80 },
+            13: { nonDealerDiscard: 100, dealerDiscard: 140, nonDealerSelf: 60, dealerSelf: 90 }
+        };
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedName = localStorage.getItem('fourthWallPlayerName');
+            if (savedName) {
+                gameState.playerName = savedName;
+                showWelcomeBack(savedName);
+            }
+
+            // Load history from localStorage
+            const savedHistory = localStorage.getItem('fourthWallHistory');
+            if (savedHistory) {
+                try {
+                    gameState.history = JSON.parse(savedHistory);
+                } catch (e) {
+                    console.error('Error loading history:', e);
+                    gameState.history = [];
+                }
+            }
+
+            document.getElementById('playerName').addEventListener('change', (e) => {
+                const name = e.target.value.trim();
+                if (name) {
+                    gameState.playerName = name;
+                    localStorage.setItem('fourthWallPlayerName', name);
+                    showNameConfirmation(name);
+                }
+            });
+        });
+
+        function showWelcomeBack(name) {
+            // Extract first name only (before space or period)
+            const firstName = name.split(/[\s.]/)[0];
+            
+            document.getElementById('nameEntryForm').style.display = 'none';
+            document.getElementById('welcomeBackMessage').style.display = 'block';
+            document.getElementById('welcomeBackName').textContent = firstName.toUpperCase();
+        }
+
+        function showNameConfirmation(name) {
+            document.getElementById('nameDisplay').style.display = 'block';
+            document.getElementById('currentPlayerName').textContent = name;
+        }
+
+        function goToScreen(screenId) {
+            if (screenId === 'cameraScreen' && !gameState.playerName) {
+                alert('PLEASE ENTER NAME FIRST 🙏🏽');
+                document.getElementById('playerName').focus();
+                return;
+            }
+
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            document.getElementById(screenId).classList.add('active');
+            currentScreen = screenId;
+
+            const backBtn = document.getElementById('backBtn');
+            backBtn.style.display = screenId === 'homeScreen' ? 'none' : 'block';
+
+            if (screenId === 'cameraScreen' && !cameraActive) {
+                // Don't auto-start camera, wait for user to click capture
+                resetCameraScreen();
+            }
+
+            if (screenId !== 'cameraScreen' && videoStream) {
+                stopCamera();
+            }
+        }
+
+        function resetCameraScreen() {
+            document.getElementById('detectedHandPreview').style.display = 'none';
+            document.getElementById('togglesSection').style.display = 'none';
+            document.getElementById('processingAlert').style.display = 'none';
+            document.getElementById('capturedImage').classList.remove('active');
+            document.getElementById('videoElement').classList.remove('active');
+            document.getElementById('cameraPlaceholder').classList.remove('hidden');
+            gameState.detectedHand = null;
+        }
+
+        async function initCamera() {
+            try {
+                const video = document.getElementById('videoElement');
+                const placeholder = document.getElementById('cameraPlaceholder');
+                
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    } 
+                });
+                
+                video.srcObject = videoStream;
+                video.classList.add('active');
+                placeholder.classList.add('hidden');
+                cameraActive = true;
+                
+                document.getElementById('captureBtnIcon').textContent = '📸';
+                
+            } catch (error) {
+                console.error('Camera access error:', error);
+                alert('UNABLE TO ACCESS CAMERA. PLEASE GRANT CAMERA PERMISSIONS AND TRY AGAIN.');
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                cameraActive = false;
+                
+                const video = document.getElementById('videoElement');
+                video.srcObject = null;
+                video.classList.remove('active');
+            }
+        }
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            goToScreen('homeScreen');
+        });
+
+        function backToToggles() {
+            // Go back to camera screen but keep everything as-is
+            // Show the detected hand preview and toggles section
+            goToScreen('cameraScreen');
+            
+            // Make sure the correct sections are visible
+            document.getElementById('detectedHandPreview').style.display = 'block';
+            document.getElementById('togglesSection').style.display = 'block';
+            
+            // Keep the captured image visible
+            document.getElementById('capturedImage').classList.add('active');
+            document.getElementById('videoElement').classList.remove('active');
+            document.getElementById('cameraPlaceholder').classList.add('hidden');
+            
+            // Scroll to toggles
+            document.getElementById('togglesSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function resetAndScore() {
+            // Reset game state but keep player name
+            gameState.winConditions = [];
+            gameState.flowers = [];
+            gameState.detectedHand = null;
+            
+            // Clear all toggle selections except wind defaults
+            document.querySelectorAll('.toggle-option').forEach(opt => {
+                if (!opt.textContent.includes('東 EAST')) {
+                    opt.classList.remove('selected');
+                }
+            });
+            
+            // Reset camera screen completely
+            document.getElementById('capturedImage').src = '';
+            document.getElementById('capturedImage').classList.remove('active');
+            document.getElementById('cameraPlaceholder').classList.remove('hidden');
+            document.getElementById('detectedHandPreview').style.display = 'none';
+            document.getElementById('togglesSection').style.display = 'none';
+            
+            // Reset to home screen
+            goToScreen('homeScreen');
+        }
+
+        function selectToggle(element, group, value) {
+            element.parentElement.querySelectorAll('.toggle-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            
+            gameState[group] = value;
+        }
+
+        function toggleHelp() {
+            const helpContent = document.getElementById('helpContent');
+            const helpIcon = document.getElementById('helpIcon');
+            helpContent.classList.toggle('active');
+            helpIcon.textContent = helpContent.classList.contains('active') ? '▲' : '▼';
+        }
+
+        function toggleSpecial(element, condition) {
+            element.classList.toggle('selected');
+            
+            if (element.classList.contains('selected')) {
+                if (!gameState.winConditions.includes(condition)) {
+                    gameState.winConditions.push(condition);
+                }
+            } else {
+                gameState.winConditions = gameState.winConditions.filter(c => c !== condition);
+            }
+        }
+
+        function toggleFlower(element, flower) {
+            element.classList.toggle('selected');
+            
+            if (element.classList.contains('selected')) {
+                if (!gameState.flowers.includes(flower)) {
+                    gameState.flowers.push(flower);
+                }
+            } else {
+                gameState.flowers = gameState.flowers.filter(f => f !== flower);
+            }
+        }
+
+        function capturePhoto() {
+            if (!cameraActive) {
+                initCamera();
+                return;
+            }
+
+            const video = document.getElementById('videoElement');
+            const capturedImage = document.getElementById('capturedImage');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg');
+            capturedImage.src = imageData;
+            
+            stopCamera();
+            
+            video.classList.remove('active');
+            capturedImage.classList.add('active');
+            
+            const captureBtn = document.getElementById('captureBtn');
+            captureBtn.disabled = true;
+            
+            document.getElementById('processingAlert').style.display = 'flex';
+            
+            // Simulate CV processing
+            setTimeout(() => {
+                simulateTileDetection();
+                
+                const detectedHandPreview = document.getElementById('detectedHandPreview');
+                const togglesSection = document.getElementById('togglesSection');
+                const processingAlert = document.getElementById('processingAlert');
+                
+                processingAlert.style.display = 'none';
+                detectedHandPreview.style.display = 'block';
+                togglesSection.style.display = 'block';
+                
+                captureBtn.disabled = false;
+                
+                // Scroll to show the detected hand below the header
+                setTimeout(() => {
+                    const headerHeight = document.querySelector('.header').offsetHeight;
+                    const elementPosition = detectedHandPreview.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerHeight - 10;
+                    
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }, 100);
+            }, 2000);
+        }
+
+        function simulateTileDetection() {
+            // This simulates what a real CV model would return
+            // In production, this would be replaced with actual computer vision API call
+            
+            const exampleHands = [
+                {
+                    melds: [
+                        { type: 'pong', tiles: ['2🎋', '2🎋', '2🎋'], suit: 'bamboo' },
+                        { type: 'kong', tiles: ['8🎋', '8🎋', '8🎋', '8🎋'], suit: 'bamboo' },
+                        { type: 'pong', tiles: ['中', '中', '中'], suit: 'dragon' },
+                        { type: 'pong', tiles: ['發', '發', '發'], suit: 'dragon' }
+                    ],
+                    pair: { tiles: ['白', '白'], suit: 'dragon' }
+                },
+                {
+                    melds: [
+                        { type: 'chow', tiles: ['1🔵', '2🔵', '3🔵'], suit: 'dot' },
+                        { type: 'chow', tiles: ['4🔵', '5🔵', '6🔵'], suit: 'dot' },
+                        { type: 'chow', tiles: ['7🔵', '8🔵', '9🔵'], suit: 'dot' },
+                        { type: 'pong', tiles: ['2🎋', '2🎋', '2🎋'], suit: 'bamboo' }
+                    ],
+                    pair: { tiles: ['5萬', '5萬'], suit: 'character' }
+                }
+            ];
+            
+            // Randomly select an example hand
+            gameState.detectedHand = exampleHands[Math.floor(Math.random() * exampleHands.length)];
+            
+            displayDetectedHand();
+        }
+
+        function displayDetectedHand() {
+            const hand = gameState.detectedHand;
+            const display = document.getElementById('detectedTilesDisplay');
+            
+            let html = '';
+            let meldTypes = [];
+            
+            hand.melds.forEach((meld, meldIndex) => {
+                if (meldIndex > 0) {
+                    html += '<div class="tile-divider" style="width: 8px; font-size: 12px;">|</div>';
+                }
+                
+                meld.tiles.forEach((tile, tileIndex) => {
+                    html += `<div class="tile ${meld.suit}" style="height: 48px; min-width: 36px; font-size: 14px; cursor: pointer; transition: transform 0.2s;" onclick="openTileEditor(${meldIndex}, ${tileIndex}, '${tile}')" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">${tile}</div>`;
+                });
+                
+                meldTypes.push(meld.type.charAt(0).toUpperCase() + meld.type.slice(1));
+            });
+            
+            html += '<div class="tile-divider" style="width: 8px; font-size: 12px;">|</div>';
+            hand.pair.tiles.forEach((tile, tileIndex) => {
+                html += `<div class="tile ${hand.pair.suit}" style="height: 48px; min-width: 36px; font-size: 14px; cursor: pointer; transition: transform 0.2s;" onclick="openTileEditor('pair', ${tileIndex}, '${tile}')" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">${tile}</div>`;
+            });
+            
+            display.innerHTML = html;
+        }
+
+        function retakePhoto() {
+            document.getElementById('detectedHandPreview').style.display = 'none';
+            document.getElementById('togglesSection').style.display = 'none';
+            document.getElementById('capturedImage').classList.remove('active');
+            
+            gameState.detectedHand = null;
+            
+            initCamera();
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function calculateScore() {
+            // Check if we have a detected hand
+            if (!gameState.detectedHand) {
+                alert('NO HAND DETECTED! PLEASE TAKE A PHOTO FIRST.');
+                return;
+            }
+            
+            const hand = gameState.detectedHand;
+
+            let totalPoints = 0;
+            let breakdown = [];
+            
+            // Analyze hand patterns
+            const analysis = analyzeHand(hand);
+            
+            // Apply pattern scores
+            if (analysis.patterns.allPongs) {
+                breakdown.push({ 
+                    name: scoringRules.allPongs.name, 
+                    detail: scoringRules.allPongs.description, 
+                    points: scoringRules.allPongs.points 
+                });
+                totalPoints += scoringRules.allPongs.points;
+            }
+            
+            if (analysis.patterns.mixedOneSuit) {
+                breakdown.push({ 
+                    name: scoringRules.mixedOneSuit.name, 
+                    detail: `${analysis.patterns.mixedOneSuit} + Honor tiles`, 
+                    points: scoringRules.mixedOneSuit.points 
+                });
+                totalPoints += scoringRules.mixedOneSuit.points;
+            }
+            
+            if (analysis.patterns.pureOneSuit) {
+                breakdown.push({ 
+                    name: scoringRules.pureOneSuit.name, 
+                    detail: `All ${analysis.patterns.pureOneSuit}`, 
+                    points: scoringRules.pureOneSuit.points 
+                });
+                totalPoints += scoringRules.pureOneSuit.points;
+            }
+            
+            if (analysis.patterns.minorDragons) {
+                breakdown.push({ 
+                    name: scoringRules.minorDragons.name, 
+                    detail: scoringRules.minorDragons.description, 
+                    points: scoringRules.minorDragons.points 
+                });
+                totalPoints += scoringRules.minorDragons.points;
+            }
+            
+            if (analysis.patterns.greatDragons) {
+                breakdown.push({ 
+                    name: scoringRules.greatDragons.name, 
+                    detail: scoringRules.greatDragons.description, 
+                    points: scoringRules.greatDragons.points 
+                });
+                totalPoints += scoringRules.greatDragons.points;
+            }
+            
+            if (analysis.patterns.allChow) {
+                breakdown.push({ 
+                    name: scoringRules.allChow.name, 
+                    detail: scoringRules.allChow.description, 
+                    points: scoringRules.allChow.points 
+                });
+                totalPoints += scoringRules.allChow.points;
+            }
+            
+            // Win conditions
+            gameState.winConditions.forEach(condition => {
+                if (scoringRules[condition]) {
+                    breakdown.push({ 
+                        name: scoringRules[condition].name, 
+                        detail: scoringRules[condition].description, 
+                        points: scoringRules[condition].points 
+                    });
+                    totalPoints += scoringRules[condition].points;
+                }
+            });
+            
+            // Flowers
+            const flowerCount = gameState.flowers.length;
+            if (flowerCount === 0) {
+                breakdown.push({ 
+                    name: scoringRules.noFlowers.name, 
+                    detail: '', 
+                    points: scoringRules.noFlowers.points 
+                });
+                totalPoints += scoringRules.noFlowers.points;
+            } else if (flowerCount === 8) {
+                breakdown.push({ 
+                    name: scoringRules.allFlowers.name, 
+                    detail: '', 
+                    points: scoringRules.allFlowers.points 
+                });
+                totalPoints += scoringRules.allFlowers.points;
+            } else {
+                const flowers = gameState.flowers.filter(f => f.startsWith('f'));
+                const seasons = gameState.flowers.filter(f => f.startsWith('s'));
+                
+                if (flowers.length === 4) {
+                    breakdown.push({ 
+                        name: 'Flower Set', 
+                        detail: 'All 4 flowers', 
+                        points: 2 
+                    });
+                    totalPoints += 2;
+                }
+                if (seasons.length === 4) {
+                    breakdown.push({ 
+                        name: 'Season Set', 
+                        detail: 'All 4 seasons', 
+                        points: 2 
+                    });
+                    totalPoints += 2;
+                }
+                
+                const seatFlowerMap = { 
+                    'east': ['f1', 's1'], 
+                    'south': ['f2', 's2'], 
+                    'west': ['f3', 's3'], 
+                    'north': ['f4', 's4'] 
+                };
+                const selfFlowers = seatFlowerMap[gameState.seatWind].filter(f => gameState.flowers.includes(f));
+                if (selfFlowers.length > 0) {
+                    breakdown.push({ 
+                        name: 'Self Flower', 
+                        detail: selfFlowers.join(', '), 
+                        points: selfFlowers.length 
+                    });
+                    totalPoints += selfFlowers.length;
+                }
+            }
+            
+            // CRITICAL: Check 3 point minimum
+            if (totalPoints < 3) {
+                alert('⚠️ INVALID HAND\n\nTHIS HAND SCORES ' + totalPoints + ' POINT(S).\nYOU NEED AT LEAST 3 POINTS TO WIN.\n\nPLEASE CHECK:\n• HAND PATTERNS (ALL PONGS, MIXED/PURE SUIT, ETC.)\n• ADDITIONAL WIN CONDITIONS\n• FLOWERS AND SEAT BONUSES');
+                return;
+            }
+            
+            const isDealer = gameState.seatWind === 'east';
+            const isSelfDraw = gameState.winConditions.includes('selfDraw');
+            const payout = calculatePayout(totalPoints, isDealer, isSelfDraw);
+            
+            // Save to history
+            saveToHistory(totalPoints, payout, breakdown, isDealer, isSelfDraw);
+            
+            updateResultsScreen(totalPoints, payout, breakdown, isDealer, isSelfDraw);
+            
+            goToScreen('resultsScreen');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function analyzeHand(hand) {
+            const patterns = {};
+            
+            // Check all pongs
+            const allPongs = hand.melds.every(m => m.type === 'pong' || m.type === 'kong');
+            if (allPongs) {
+                patterns.allPongs = true;
+            }
+            
+            // Check all chow
+            const allChow = hand.melds.every(m => m.type === 'chow');
+            if (allChow) {
+                patterns.allChow = true;
+            }
+            
+            // Check suits
+            const suits = new Set();
+            const honorCount = hand.melds.filter(m => m.suit === 'dragon' || m.suit === 'wind').length;
+            
+            hand.melds.forEach(m => {
+                if (m.suit !== 'dragon' && m.suit !== 'wind') {
+                    suits.add(m.suit);
+                }
+            });
+            
+            if (hand.pair.suit !== 'dragon' && hand.pair.suit !== 'wind') {
+                suits.add(hand.pair.suit);
+            }
+            
+            if (suits.size === 1 && honorCount === 0) {
+                patterns.pureOneSuit = Array.from(suits)[0];
+            } else if (suits.size === 1 && honorCount > 0) {
+                patterns.mixedOneSuit = Array.from(suits)[0];
+            }
+            
+            // Check dragons
+            const dragonPongs = hand.melds.filter(m => m.suit === 'dragon' && (m.type === 'pong' || m.type === 'kong')).length;
+            const dragonPair = hand.pair.suit === 'dragon' ? 1 : 0;
+            
+            if (dragonPongs === 3) {
+                patterns.greatDragons = true;
+            } else if (dragonPongs === 2 && dragonPair === 1) {
+                patterns.minorDragons = true;
+            }
+            
+            return { patterns };
+        }
+
+        function calculatePayout(faan, isDealer, isSelfDraw) {
+            const cappedFaan = Math.min(faan, 13);
+            const row = payoutTable[cappedFaan];
+            
+            let perPlayerAmount;
+            if (isDealer && isSelfDraw) perPlayerAmount = row.dealerSelf;
+            else if (isDealer && !isSelfDraw) perPlayerAmount = row.dealerDiscard;
+            else if (!isDealer && isSelfDraw) perPlayerAmount = row.nonDealerSelf;
+            else perPlayerAmount = row.nonDealerDiscard;
+            
+            // For self-draw, return object with total and per-player
+            // For discard, just return the single amount
+            if (isSelfDraw) {
+                return {
+                    total: perPlayerAmount * 3,
+                    perPlayer: perPlayerAmount
+                };
+            } else {
+                return {
+                    total: perPlayerAmount,
+                    perPlayer: null
+                };
+            }
+        }
+
+        function getCoinsBreakdown(amount) {
+            const coins = [];
+            let remaining = amount;
+            
+            while (remaining >= 20) {
+                coins.push(20);
+                remaining -= 20;
+            }
+            while (remaining >= 10) {
+                coins.push(10);
+                remaining -= 10;
+            }
+            while (remaining >= 5) {
+                coins.push(5);
+                remaining -= 5;
+            }
+            while (remaining >= 2) {
+                coins.push(2);
+                remaining -= 2;
+            }
+            while (remaining >= 1) {
+                coins.push(1);
+                remaining -= 1;
+            }
+            
+            return coins;
+        }
+
+        function renderCoins(amount) {
+            const coins = getCoinsBreakdown(amount);
+            return coins.map(coin => `<div class="coin coin-${coin}">${coin}</div>`).join('');
+        }
+
+        function updateResultsScreen(points, payout, breakdown, isDealer, isSelfDraw) {
+            document.getElementById('winnerName').textContent = (gameState.playerName || 'PLAYER').toUpperCase();
+
+            if (points >= 10) {
+                document.getElementById('victoryPhrase').style.display = 'block';
+                triggerConfetti();
+                setTimeout(() => {
+                    document.querySelector('.result-hero').classList.add('victory-glow');
+                }, 100);
+            } else {
+                document.getElementById('victoryPhrase').style.display = 'none';
+                document.querySelector('.result-hero').classList.remove('victory-glow');
+            }
+
+            document.getElementById('totalPoints').textContent = points;
+            
+            // Update payout amount - show per-player with PP for self-draw, total for discard
+            if (isSelfDraw) {
+                document.getElementById('payoutAmount').textContent = `${payout.perPlayer} PP`;
+            } else {
+                document.getElementById('payoutAmount').textContent = payout.total;
+            }
+            
+            // Label changes based on win type
+            if (isSelfDraw) {
+                document.getElementById('payoutDescription').textContent = 'FROM ALL PLAYERS';
+            } else {
+                document.getElementById('payoutDescription').textContent = 'FROM DISCARDER';
+            }
+            
+            const payoutCoins = document.getElementById('payoutCoins');
+            // Coins always show the per-player amount
+            const coinsAmount = isSelfDraw ? payout.perPlayer : payout.total;
+            payoutCoins.innerHTML = renderCoins(coinsAmount);
+            
+            const winTypeLabel = isDealer ? 'DEALER' : 'NON-DEALER';
+            const winMethodLabel = isSelfDraw ? 'SELF DRAW' : 'DISCARD WIN';
+            document.getElementById('winTypeLabel').textContent = `${winTypeLabel} / ${winMethodLabel}`;
+            
+            // Display tiles in results - make them smaller
+            const resultsTilesDisplay = document.getElementById('resultsTilesDisplay');
+            let tilesHTML = '';
+            const hand = gameState.detectedHand;
+            
+            hand.melds.forEach((meld, index) => {
+                if (index > 0) {
+                    tilesHTML += '<div class="tile-divider" style="width: 8px; font-size: 12px;">|</div>';
+                }
+                meld.tiles.forEach(tile => {
+                    tilesHTML += `<div class="tile ${meld.suit}">${tile}</div>`;
+                });
+            });
+            
+            tilesHTML += '<div class="tile-divider" style="width: 8px; font-size: 12px;">|</div>';
+            hand.pair.tiles.forEach(tile => {
+                tilesHTML += `<div class="tile ${hand.pair.suit}">${tile}</div>`;
+            });
+            
+            resultsTilesDisplay.innerHTML = tilesHTML;
+            
+            // Update breakdown - put Self Draw first if it exists
+            const breakdownContainer = document.getElementById('breakdownItems');
+            let breakdownHTML = '';
+            
+            // Separate self draw from other items
+            const selfDrawItem = breakdown.find(item => item.name.toLowerCase().includes('self draw'));
+            const otherItems = breakdown.filter(item => !item.name.toLowerCase().includes('self draw'));
+            
+            // Add self draw first
+            if (selfDrawItem) {
+                breakdownHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.2);">
+                        <div style="font-size: 11px; color: #2d5016; font-weight: 600; text-transform: uppercase;">${selfDrawItem.name.toUpperCase()}</div>
+                        <div style="font-weight: 700; color: #2d5016; font-size: 12px;">+${selfDrawItem.points}</div>
+                    </div>
+                `;
+            }
+            
+            // Then add other items
+            otherItems.forEach(item => {
+                breakdownHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.2);">
+                        <div style="font-size: 11px; color: #2d5016; font-weight: 600; text-transform: uppercase;">${item.name.toUpperCase()}</div>
+                        <div style="font-weight: 700; color: #2d5016; font-size: 12px;">+${item.points}</div>
+                    </div>
+                `;
+            });
+            
+            breakdownContainer.innerHTML = breakdownHTML;
+            document.getElementById('totalPointsBreakdown').textContent = points;
+        }
+
+        function triggerConfetti() {
+            const colors = ['#d4af37', '#c83e3e', '#2d5016', '#ffc107', '#dc3545'];
+            const confettiCount = 50;
+            
+            for (let i = 0; i < confettiCount; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 4000);
+                }, i * 30);
+            }
+        }
+
+        // Menu functions
+        function toggleMenu() {
+            const overlay = document.getElementById('menuOverlay');
+            overlay.classList.toggle('active');
+        }
+
+        function closeMenuIfOutside(event) {
+            if (event.target.id === 'menuOverlay') {
+                toggleMenu();
+            }
+        }
+
+        function changeName() {
+            toggleMenu();
+            
+            const newName = prompt('ENTER YOUR NEW NAME:\n(First name + last initial)', gameState.playerName);
+            if (newName && newName.trim()) {
+                const trimmedName = newName.trim();
+                gameState.playerName = trimmedName;
+                localStorage.setItem('fourthWallPlayerName', trimmedName);
+                
+                // Update display
+                document.getElementById('nameEntryForm').style.display = 'none';
+                document.getElementById('welcomeBackMessage').style.display = 'block';
+                
+                const firstName = trimmedName.split(/[\s.]/)[0];
+                document.getElementById('welcomeBackName').textContent = firstName.toUpperCase();
+                
+                alert('NAME UPDATED! ✓');
+            }
+        }
+
+        function goToHistory() {
+            toggleMenu();
+            goToScreen('historyScreen');
+            displayHistory();
+        }
+
+
+
+        // History Management Functions
+        let currentSortMode = 'newest';
+
+        function saveToHistory(points, payout, breakdown, isDealer, isSelfDraw) {
+            const historyEntry = {
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                playerName: gameState.playerName,
+                points: points,
+                payout: isSelfDraw ? payout.perPlayer : payout.total,
+                payoutType: isSelfDraw ? 'perPlayer' : 'total',
+                isDealer: isDealer,
+                isSelfDraw: isSelfDraw,
+                breakdown: breakdown,
+                hand: JSON.parse(JSON.stringify(gameState.detectedHand)), // Deep clone
+                seatWind: gameState.seatWind,
+                roundWind: gameState.roundWind,
+                flowers: [...gameState.flowers]
+            };
+
+            gameState.history.unshift(historyEntry); // Add to beginning
+            localStorage.setItem('fourthWallHistory', JSON.stringify(gameState.history));
+        }
+
+        function displayHistory() {
+            const historyList = document.getElementById('historyList');
+            const historyEmpty = document.getElementById('historyEmpty');
+
+            if (gameState.history.length === 0) {
+                historyList.innerHTML = '';
+                historyEmpty.style.display = 'block';
+                document.getElementById('totalWins').textContent = '0';
+                document.getElementById('highestScore').textContent = '0';
+                document.getElementById('totalCoins').textContent = '0';
+                return;
+            }
+
+            historyEmpty.style.display = 'none';
+
+            // Calculate summary stats
+            const totalWins = gameState.history.length;
+            const highestScore = Math.max(...gameState.history.map(h => h.points));
+            const totalCoins = gameState.history.reduce((sum, h) => {
+                // For self-draw, multiply by 3 to get total from all players
+                return sum + (h.isSelfDraw ? h.payout * 3 : h.payout);
+            }, 0);
+
+            document.getElementById('totalWins').textContent = totalWins;
+            document.getElementById('highestScore').textContent = highestScore;
+            document.getElementById('totalCoins').textContent = totalCoins;
+
+            // Sort history based on current mode
+            let sortedHistory = [...gameState.history];
+            if (currentSortMode === 'highest') {
+                sortedHistory.sort((a, b) => b.points - a.points);
+            }
+
+            // Render history items
+            historyList.innerHTML = sortedHistory.map(entry => {
+                const date = new Date(entry.timestamp);
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+                const winTypeLabel = entry.isDealer ? 'DEALER' : 'NON-DEALER';
+                const winMethodLabel = entry.isSelfDraw ? 'SELF DRAW' : 'DISCARD';
+                
+                const badgeColor = entry.points >= 10 ? '#d4af37' : entry.points >= 7 ? '#769656' : '#6c757d';
+
+                return `
+                    <div style="background: rgba(248, 245, 230, 0.95); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 2px solid rgba(212, 175, 55, 0.3);">
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">${dateStr} • ${timeStr}</div>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <span style="background: ${badgeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">${winTypeLabel}</span>
+                                    <span style="background: ${badgeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">${winMethodLabel}</span>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 32px; font-weight: 700; color: #2d5016; line-height: 1;">${entry.points}</div>
+                                <div style="font-size: 11px; color: #6c757d;">FAAN</div>
+                            </div>
+                        </div>
+
+                        <!-- Payout -->
+                        <div style="background: rgba(255, 255, 255, 0.6); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-size: 13px; font-weight: 600; color: #2d5016;">PAYOUT</div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="font-size: 24px; font-weight: 700; color: #2d5016;">${entry.payout}</div>
+                                    ${entry.isSelfDraw ? '<div style="font-size: 11px; color: #6c757d;">PER PLAYER</div>' : ''}
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap;">
+                                ${renderCoins(entry.payout)}
+                            </div>
+                        </div>
+
+                        <!-- Patterns -->
+                        <div style="font-size: 11px; color: #2d5016; font-weight: 600; margin-bottom: 6px;">SCORING PATTERNS:</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            ${entry.breakdown.map(item => `
+                                <div style="background: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #e1e4e8;">
+                                    <span style="color: #2d5016; font-weight: 600;">${item.name}</span>
+                                    <span style="color: #769656; font-weight: 700;">+${item.points}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function sortHistory(mode) {
+            currentSortMode = mode;
+            
+            // Update button styles
+            const newestBtn = document.getElementById('sortNewest');
+            const highestBtn = document.getElementById('sortHighest');
+            
+            if (mode === 'newest') {
+                newestBtn.style.background = '#769656';
+                newestBtn.style.color = 'white';
+                newestBtn.style.border = 'none';
+                highestBtn.style.background = '#f8f9fa';
+                highestBtn.style.color = '#6c757d';
+                highestBtn.style.border = '2px solid #e1e4e8';
+            } else {
+                highestBtn.style.background = '#769656';
+                highestBtn.style.color = 'white';
+                highestBtn.style.border = 'none';
+                newestBtn.style.background = '#f8f9fa';
+                newestBtn.style.color = '#6c757d';
+                newestBtn.style.border = '2px solid #e1e4e8';
+            }
+            
+            displayHistory();
+        }
+    </script>
+
+    <!-- Tile Editor Modal -->
+    <div class="menu-overlay" id="tileEditorOverlay" onclick="closeTileEditorIfOutside(event)">
+        <div class="menu-modal" onclick="event.stopPropagation()" style="max-width: 500px;">
+            <div class="menu-header">
+                <h2>EDIT TILE</h2>
+                <button class="menu-close" onclick="closeTileEditor()">×</button>
+            </div>
+            <div class="menu-content">
+                <div style="margin-bottom: 20px; text-align: center; color: #6c757d; font-size: 14px;">
+                    SELECT THE CORRECT TILE
+                </div>
+                
+                <!-- Characters -->
+                <div style="margin-bottom: 16px;">
+                    <h3 style="font-size: 13px; color: #2c3e50; margin-bottom: 8px; font-weight: 600;">🈚 CHARACTERS</h3>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;" id="tileEditorCharacters">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Bamboo -->
+                <div style="margin-bottom: 16px;">
+                    <h3 style="font-size: 13px; color: #2c3e50; margin-bottom: 8px; font-weight: 600;">🎋 BAMBOO</h3>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;" id="tileEditorBamboo">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Dots -->
+                <div style="margin-bottom: 16px;">
+                    <h3 style="font-size: 13px; color: #2c3e50; margin-bottom: 8px; font-weight: 600;">⚫ DOTS</h3>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;" id="tileEditorDots">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Winds -->
+                <div style="margin-bottom: 16px;">
+                    <h3 style="font-size: 13px; color: #2c3e50; margin-bottom: 8px; font-weight: 600;">🧭 WINDS</h3>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;" id="tileEditorWinds">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Dragons -->
+                <div style="margin-bottom: 16px;">
+                    <h3 style="font-size: 13px; color: #2c3e50; margin-bottom: 8px; font-weight: 600;">🐉 DRAGONS</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;" id="tileEditorDragons">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
