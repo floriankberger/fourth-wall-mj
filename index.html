@@ -1987,7 +1987,7 @@ window.addEventListener('load', loadTileRecognitionAI);
     try {
         console.log('🧠 AI analyzing your hand...');
         
-        // Step 1: Use Roboflow to detect tile locations
+        // Try Roboflow first
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = capturedImage.naturalWidth || capturedImage.width;
@@ -1996,7 +1996,7 @@ window.addEventListener('load', loadTileRecognitionAI);
         
         const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
         
-       const roboflowResponse = await fetch('https://detect.roboflow.com/mahjong-tiles-oc9zz/3?api_key=AE3m7DRP5tzF16qE0OUD', {
+        const roboflowResponse = await fetch('https://detect.roboflow.com/mahjong-tiles-oc9zz/3?api_key=AE3m7DRP5tzF16qE0OUD', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -2007,52 +2007,80 @@ window.addEventListener('load', loadTileRecognitionAI);
         const detectionResults = await roboflowResponse.json();
         console.log('✅ Roboflow detected', detectionResults.predictions.length, 'tiles');
         
-        // Step 2: For each detected tile, classify it
-        const recognizedTiles = [];
-        
-        for (const detection of detectionResults.predictions) {
-            const tileCanvas = await extractTileRegion(canvas, detection);
-            const tileName = await recognizeSingleTile(tileCanvas);
+        // If Roboflow found tiles, use them
+        if (detectionResults.predictions && detectionResults.predictions.length >= 10) {
+            const recognizedTiles = [];
             
-            recognizedTiles.push({
-                name: tileName,
-                x: detection.x
-            });
+            for (const detection of detectionResults.predictions) {
+                const tileCanvas = await extractTileRegion(canvas, detection);
+                const tileName = await recognizeSingleTile(tileCanvas);
+                
+                recognizedTiles.push({
+                    name: tileName,
+                    x: detection.x
+                });
+            }
+            
+            // Sort tiles left to right
+            recognizedTiles.sort((a, b) => a.x - b.x);
+            
+            // Take first 14 tiles
+            const tileNames = recognizedTiles.slice(0, 14).map(t => t.name);
+            gameState.detectedHand = convertTilesToHand(tileNames);
+            
+            displayDetectedHand();
+        } else {
+            // Fallback: Use simple grid splitting
+            console.log('⚠️ Roboflow found too few tiles, using grid detection');
+            await recognizeTilesWithGrid(canvas);
         }
-        
-        // Sort tiles left to right
-        recognizedTiles.sort((a, b) => a.x - b.x);
-        
-        // Convert to hand format
-        const tileNames = recognizedTiles.map(t => t.name);
-        gameState.detectedHand = convertTilesToHand(tileNames);
-        
-        displayDetectedHand();
         
     } catch (error) {
         console.error('❌ AI recognition failed:', error);
-        alert('TILE RECOGNITION FAILED. USING DEMO HAND.');
-        useDemoHand();
+        // Fallback to grid detection
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const capturedImage = document.getElementById('capturedImage');
+            canvas.width = capturedImage.naturalWidth || capturedImage.width;
+            canvas.height = capturedImage.naturalHeight || capturedImage.height;
+            ctx.drawImage(capturedImage, 0, 0);
+            await recognizeTilesWithGrid(canvas);
+        } catch (e2) {
+            console.error('❌ Grid detection also failed:', e2);
+            alert('TILE RECOGNITION FAILED. USING DEMO HAND.');
+            useDemoHand();
+        }
     }
 }
 
-// Helper function to extract tile from detected region
-async function extractTileRegion(sourceCanvas, detection) {
-    const tileCanvas = document.createElement('canvas');
-    tileCanvas.width = 128;
-    tileCanvas.height = 128;
-    const ctx = tileCanvas.getContext('2d');
+// Fallback: Simple grid-based detection
+async function recognizeTilesWithGrid(canvas) {
+    console.log('🔲 Using grid-based tile detection...');
     
-    // Roboflow returns center x, y, width, height
-    const x = detection.x - detection.width / 2;
-    const y = detection.y - detection.height / 2;
-    const w = detection.width;
-    const h = detection.height;
+    const tileWidth = canvas.width / 14;
+    const recognizedTiles = [];
     
-    // Draw and resize to 128x128
-    ctx.drawImage(sourceCanvas, x, y, w, h, 0, 0, 128, 128);
+    for (let i = 0; i < 14; i++) {
+        const tileCanvas = document.createElement('canvas');
+        tileCanvas.width = 128;
+        tileCanvas.height = 128;
+        const tileCtx = tileCanvas.getContext('2d');
+        
+        // Extract tile region
+        tileCtx.drawImage(
+            canvas,
+            i * tileWidth, 0, tileWidth, canvas.height,
+            0, 0, 128, 128
+        );
+        
+        const tileName = await recognizeSingleTile(tileCanvas);
+        recognizedTiles.push(tileName);
+    }
     
-    return tileCanvas;
+    console.log('✅ Grid detection found', recognizedTiles.length, 'tiles');
+    gameState.detectedHand = convertTilesToHand(recognizedTiles);
+    displayDetectedHand();
 }
 
 // Backup demo function
