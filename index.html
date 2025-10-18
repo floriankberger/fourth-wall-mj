@@ -1,0 +1,2629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mahjong Scorer - Fourth Wall (Members Only)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Confetti animation */
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            z-index: 9999;
+            pointer-events: none;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        /* Victory glow animation */
+        @keyframes victory-glow {
+            0%, 100% {
+                box-shadow: 0 0 30px rgba(212, 175, 55, 0.4), 0 8px 24px rgba(0,0,0,0.15);
+            }
+            50% {
+                box-shadow: 0 0 60px rgba(212, 175, 55, 0.7), 0 8px 24px rgba(0,0,0,0.15);
+            }
+        }
+
+        .victory-glow {
+            animation: victory-glow 2s ease-in-out infinite;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #2d5016;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,.03) 2px,
+                    rgba(0,0,0,.03) 4px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,.03) 2px,
+                    rgba(0,0,0,.03) 4px
+                );
+            color: #2c3e50;
+            min-height: 100vh;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a3510 0%, #2d5016 100%);
+            border-bottom: 3px solid #d4af37;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .header-content {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: #f8f5e6;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Home Screen */
+        .main-actions {
+            display: grid;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .action-card {
+            background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            border: 3px solid rgba(212, 175, 55, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .action-card:hover {
+            border-color: #d4af37;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            background: linear-gradient(135deg, rgba(248, 245, 230, 1) 0%, rgba(255, 255, 255, 1) 100%);
+        }
+
+        .action-card:active {
+            transform: translateY(-2px);
+        }
+
+        .action-card.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .action-card.hidden {
+            display: none;
+        }
+
+        .action-content {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-content h2 {
+            font-size: 16px;
+            margin: 0;
+            color: #2c3e50;
+            line-height: 1.3;
+            text-align: center;
+            width: 100%;
+            font-weight: 700;
+        }
+
+        .action-content p {
+            font-size: 11px;
+            color: #6c757d;
+            line-height: 1.2;
+            text-align: center;
+            margin-top: 4px;
+            margin-bottom: 0;
+        }
+
+        /* Login Screen Styles */
+        .login-container {
+            background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            border: 3px solid rgba(212, 175, 55, 0.6);
+            border-radius: 16px;
+            padding: 40px 32px;
+            margin-top: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            color: #2d5016;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2d5016;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s;
+            text-align: center;
+            font-family: inherit;
+        }
+
+        .form-group input::placeholder {
+            text-align: center;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            border-radius: 6px;
+            padding: 12px;
+            color: #c33;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .loading-message {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 12px;
+            color: #0066cc;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+        }
+
+        .loading-message.show {
+            display: block;
+        }
+
+        .btn {
+            padding: 16px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d78c 100%);
+            color: #2c3e50;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        /* Player Grid */
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .player-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .player-card:hover {
+            border-color: #d4af37;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .player-card.selected {
+            border-color: #d4af37;
+            background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);
+        }
+
+        .player-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .player-role {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        /* Tile Selector */
+        .tile-input-container {
+            background: white;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .tile-categories {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-btn.active {
+            border-color: #d4af37;
+            background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);
+            color: #d4af37;
+        }
+
+        .tiles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+        }
+
+        .tile-btn {
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            font-size: 28px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tile-btn:hover {
+            border-color: #d4af37;
+            transform: translateY(-2px);
+        }
+
+        .tile-btn:active {
+            transform: translateY(0);
+        }
+
+        .selected-tiles-display {
+            min-height: 60px;
+            background: #f8f9fa;
+            border: 2px dashed #d4af37;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .selected-tile {
+            font-size: 32px;
+            background: white;
+            border: 2px solid #d4af37;
+            border-radius: 6px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .selected-tile:hover {
+            background: #fee;
+            border-color: #c33;
+        }
+
+        /* Options */
+        .options-section {
+            background: white;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .option-group {
+            margin-bottom: 16px;
+        }
+
+        .option-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .option-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .option-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .option-btn {
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .option-btn.selected {
+            border-color: #d4af37;
+            background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);
+            color: #d4af37;
+        }
+
+        /* Flower Selector */
+        .flower-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .flower-btn {
+            padding: 12px 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .flower-btn:hover {
+            border-color: #d4af37;
+        }
+
+        .flower-btn.selected {
+            border-color: #d4af37;
+            background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);
+        }
+
+        .flower-label {
+            font-size: 10px;
+            color: #6c757d;
+        }
+
+        /* Results */
+        .results-card {
+            background: linear-gradient(135deg, rgba(248, 245, 230, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            border: 3px solid #d4af37;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .points-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #d4af37;
+            margin: 8px 0;
+        }
+
+        .payout-summary {
+            display: grid;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .payout-row {
+            background: white;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .payout-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .payout-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #d4af37;
+        }
+
+        /* Leaderboard */
+        .leaderboard-table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .leaderboard-table thead {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d78c 100%);
+        }
+
+        .leaderboard-table th {
+            padding: 16px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #2c3e50;
+            text-align: left;
+        }
+
+        .leaderboard-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* Loading & Error States */
+        .loading-state, .error-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loading-spinner {
+            font-size: 48px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Stats Cards */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #d4af37;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        /* Tournament Badge */
+        .tournament-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #dc3545 0%, #ff6b7a 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* Helper text */
+        .helper-text {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* Update timestamp */
+        .update-timestamp {
+            text-align: center;
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <button class="menu-btn" onclick="toggleMenu(event)">☰</button>
+            <h1 style="color: #f8f5e6; font-size: 20px; font-weight: 700;">FW MJ</h1>
+            <button class="menu-btn" onclick="showLogout()">👤</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- LOGIN SCREEN -->
+        <div class="screen active" id="loginScreen">
+            <div class="login-container">
+                <div class="login-header">
+                    <h1>FOURTH WALL 🎋</h1>
+                </div>
+                
+                <div class="login-form">
+                    <div class="form-group">
+                        <label>EMAIL OR PHONE</label>
+                        <input 
+                            type="text" 
+                            id="memberIdentifier" 
+                            placeholder="EMAIL@EXAMPLE.COM OR 555-555-5555"
+                            autocomplete="off"
+                        />
+                    </div>
+                    
+                    <div class="loading-message" id="loadingMessage">
+                        🔄 LOADING MEMBER LIST...
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage">
+                        NOT A RECOGNIZED MEMBER. PLEASE CHECK YOUR EMAIL OR PHONE NUMBER.
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="authenticateMember()" id="loginBtn">
+                        食和
+                    </button>
+                    
+                    <div style="text-align: center; font-size: 11px; color: #6c757d; margin-top: 8px;">
+                        MEMBER DATA LOADED FROM GOOGLE SHEETS
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HOME SCREEN -->
+        <div id="homeScreen" class="screen">
+            <div class="main-actions">
+                <!-- 1. Fourth Wall Calculator -->
+                <div class="action-card" onclick="showCalculator()">
+                    <div class="action-content">
+                        <h2>🧮 FOURTH WALL CALCULATOR</h2>
+                    </div>
+                </div>
+
+                <!-- 2. Fourth Wall Leaderboard -->
+                <div class="action-card" onclick="showLeaderboard()">
+                    <div class="action-content">
+                        <h2>🏆 FOURTH WALL LEADERBOARD</h2>
+                    </div>
+                </div>
+
+                <!-- 3. Tournament Leaderboard (everyone) -->
+                <div class="action-card" onclick="showTournamentLeaderboard()">
+                    <div class="action-content">
+                        <h2>🆚 FW: IN THE MOOD FOR FAAN</h2>
+                        <p>NOV'25 TOURNAMENT</p>
+                    </div>
+                </div>
+
+                <!-- 4. Tournament Calculator (admin only) -->
+                <div class="action-card" id="tournamentCalculatorCard" onclick="showTournamentCalculator()">
+                    <div class="action-content">
+                        <h2>📐 FW: ITMFF CALCULATOR<span class="tournament-badge">ADMIN</span></h2>
+                    </div>
+                </div>
+
+                <!-- 5. Hand History (admin only) -->
+                <div class="action-card" id="handHistoryCard" onclick="showHandHistory()">
+                    <div class="action-content">
+                        <h2>📜 FW: ITMFF SCORING RECORD<span class="tournament-badge">ADMIN</span></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CALCULATOR SCREEN -->
+        <div id="calculatorScreen" class="screen">
+            <!-- Tile Input -->
+            <div class="tile-input-container">
+                <h3 style="margin-bottom: 16px; font-size: 16px;">Select Tiles</h3>
+                
+                <div class="tile-categories">
+                    <button class="category-btn active" onclick="showTileCategory('characters')">🀇 Man</button>
+                    <button class="category-btn" onclick="showTileCategory('bamboo')">🀐 Sou</button>
+                    <button class="category-btn" onclick="showTileCategory('dots')">🀙 Pin</button>
+                    <button class="category-btn" onclick="showTileCategory('winds')">🀀 Wind</button>
+                    <button class="category-btn" onclick="showTileCategory('dragons')">🀄 Dragon</button>
+                </div>
+
+                <div id="tilesGridContainer" class="tiles-grid"></div>
+
+                <div class="selected-tiles-display" id="selectedTilesDisplay">
+                    <span style="color: #6c757d; font-size: 14px;">Tap tiles to add (need 13-14)</span>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="options-section">
+                <div class="option-group">
+                    <label>Win Type</label>
+                    <div class="option-buttons">
+                        <button class="option-btn selected" onclick="selectWinType('selfDraw')">Self-Draw</button>
+                        <button class="option-btn" onclick="selectWinType('discard')">Win on Discard</button>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>Seat Wind</label>
+                    <div class="option-buttons">
+                        <button class="option-btn selected" onclick="selectSeatWind('east')">East (Dealer)</button>
+                        <button class="option-btn" onclick="selectSeatWind('south')">South</button>
+                        <button class="option-btn" onclick="selectSeatWind('west')">West</button>
+                        <button class="option-btn" onclick="selectSeatWind('north')">North</button>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>Winning Conditions</label>
+                    <div class="option-buttons">
+                        <button class="option-btn" onclick="toggleWinCondition('concealed')">All Concealed</button>
+                        <button class="option-btn" onclick="toggleWinCondition('lastTile')">Last Tile</button>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>Flowers (tap to select)</label>
+                    <div class="flower-grid">
+                        <button class="flower-btn" onclick="toggleFlower('plum')">
+                            🌸
+                            <span class="flower-label">Plum</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('orchid')">
+                            🌼
+                            <span class="flower-label">Orchid</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('bamboo')">
+                            🎋
+                            <span class="flower-label">Bamboo</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('mum')">
+                            🌻
+                            <span class="flower-label">Mum</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('spring')">
+                            🌱
+                            <span class="flower-label">Spring</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('summer')">
+                            ☀️
+                            <span class="flower-label">Summer</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('fall')">
+                            🍂
+                            <span class="flower-label">Fall</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleFlower('winter')">
+                            ❄️
+                            <span class="flower-label">Winter</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 12px;" onclick="calculateScore()">Calculate Score</button>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="showHome()">Back to Home</button>
+        </div>
+
+        <!-- RESULTS SCREEN -->
+        <div id="resultsScreen" class="screen">
+            <div class="results-card" id="resultsCard">
+                <div class="results-header">
+                    <h2 style="font-size: 24px; margin-bottom: 8px;">WINNER!</h2>
+                    <div class="points-display" id="pointsDisplay">0</div>
+                    <p style="font-size: 14px; color: #6c757d;">FAAN</p>
+                </div>
+
+                <div id="breakdownSection" style="margin-bottom: 20px;">
+                    <!-- Breakdown will be inserted here -->
+                </div>
+
+                <div class="payout-summary" id="payoutSummary">
+                    <!-- Payout will be inserted here -->
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 12px;" onclick="showCalculator()">Calculate Another</button>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="showHome()">Back to Home</button>
+        </div>
+
+        <!-- LEADERBOARD SCREEN -->
+        <div id="leaderboardScreen" class="screen">
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalPlayers">0</div>
+                    <div class="stat-label">Total Players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalHands">0</div>
+                    <div class="stat-label">Hands Played</div>
+                </div>
+            </div>
+
+            <div id="leaderboardLoading" class="loading-state">
+                <div class="loading-spinner">🀄</div>
+                <p style="margin-top: 16px;">Loading leaderboard...</p>
+            </div>
+
+            <div id="leaderboardError" class="error-state" style="display: none;">
+                <p style="color: #dc3545; font-weight: 600;">Failed to load leaderboard</p>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="loadLeaderboard()">Try Again</button>
+            </div>
+
+            <div id="leaderboardTableContainer" style="display: none;">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">Rank</th>
+                            <th>Player</th>
+                            <th style="width: 60px; text-align: center;">Wins</th>
+                            <th style="width: 60px; text-align: center;">Losses</th>
+                            <th style="width: 80px; text-align: center;">Faan</th>
+                            <th style="width: 80px; text-align: center;">Coins</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody"></tbody>
+                </table>
+                <div class="update-timestamp" id="leaderboardLastUpdated"></div>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;" onclick="showHome()">Back to Home</button>
+        </div>
+
+        <!-- TOURNAMENT CALCULATOR SCREEN (ADMIN ONLY) -->
+        <div id="tournamentCalculatorScreen" class="screen">
+            <h2 style="margin-bottom: 20px; font-size: 20px; text-align: center;">
+                Tournament Calculator<span class="tournament-badge">ADMIN ONLY</span>
+            </h2>
+
+            <!-- Winner Selection -->
+            <div class="options-section">
+                <label>Select Winner</label>
+                <div class="players-grid" id="tournamentWinnerGrid"></div>
+            </div>
+
+            <!-- Tile Input (same as regular calculator) -->
+            <div class="tile-input-container">
+                <h3 style="margin-bottom: 16px; font-size: 16px;">Winner's Tiles</h3>
+                
+                <div class="tile-categories">
+                    <button class="category-btn active" onclick="showTournamentTileCategory('characters')">🀇 Man</button>
+                    <button class="category-btn" onclick="showTournamentTileCategory('bamboo')">🀐 Sou</button>
+                    <button class="category-btn" onclick="showTournamentTileCategory('dots')">🀙 Pin</button>
+                    <button class="category-btn" onclick="showTournamentTileCategory('winds')">🀀 Wind</button>
+                    <button class="category-btn" onclick="showTournamentTileCategory('dragons')">🀄 Dragon</button>
+                </div>
+
+                <div id="tournamentTilesGridContainer" class="tiles-grid"></div>
+
+                <div class="selected-tiles-display" id="tournamentSelectedTilesDisplay">
+                    <span style="color: #6c757d; font-size: 14px;">Tap tiles to add (need 13-14)</span>
+                </div>
+            </div>
+
+            <!-- Tournament Options (simplified) -->
+            <div class="options-section">
+                <div class="option-group">
+                    <label>Win Type</label>
+                    <div class="option-buttons">
+                        <button class="option-btn selected" onclick="selectTournamentWinType('selfDraw')">Self-Draw</button>
+                        <button class="option-btn" onclick="selectTournamentWinType('discard')">Win on Discard</button>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>Seat Wind</label>
+                    <div class="option-buttons">
+                        <button class="option-btn selected" onclick="selectTournamentSeatWind('east')">East (Dealer)</button>
+                        <button class="option-btn" onclick="selectTournamentSeatWind('south')">South</button>
+                        <button class="option-btn" onclick="selectTournamentSeatWind('west')">West</button>
+                        <button class="option-btn" onclick="selectTournamentSeatWind('north')">North</button>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>Winning Conditions</label>
+                    <div class="option-buttons">
+                        <button class="option-btn" onclick="toggleTournamentWinCondition('concealed')">All Concealed</button>
+                        <button class="option-btn" onclick="toggleTournamentWinCondition('lastTile')">Last Tile</button>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <label>Flowers (tap to select)</label>
+                    <div class="flower-grid">
+                        <button class="flower-btn" onclick="toggleTournamentFlower('plum')">
+                            🌸
+                            <span class="flower-label">Plum</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('orchid')">
+                            🌼
+                            <span class="flower-label">Orchid</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('bamboo')">
+                            🎋
+                            <span class="flower-label">Bamboo</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('mum')">
+                            🌻
+                            <span class="flower-label">Mum</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('spring')">
+                            🌱
+                            <span class="flower-label">Spring</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('summer')">
+                            ☀️
+                            <span class="flower-label">Summer</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('fall')">
+                            🍂
+                            <span class="flower-label">Fall</span>
+                        </button>
+                        <button class="flower-btn" onclick="toggleTournamentFlower('winter')">
+                            ❄️
+                            <span class="flower-label">Winter</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 12px;" onclick="submitTournamentHand()">Submit Hand</button>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="showHome()">Back to Home</button>
+        </div>
+
+        <!-- TOURNAMENT LEADERBOARD SCREEN -->
+        <div id="tournamentLeaderboardScreen" class="screen">
+            <h2 style="margin-bottom: 20px; font-size: 20px; text-align: center;">
+                Tournament Leaderboard<span class="tournament-badge">LIVE</span>
+            </h2>
+
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-value" id="tournamentTotalPlayers">0</div>
+                    <div class="stat-label">Total Players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="tournamentTotalHands">0</div>
+                    <div class="stat-label">Hands Played</div>
+                </div>
+            </div>
+
+            <div id="tournamentLeaderboardLoading" class="loading-state">
+                <div class="loading-spinner">🀄</div>
+                <p style="margin-top: 16px;">Loading tournament standings...</p>
+            </div>
+
+            <div id="tournamentLeaderboardError" class="error-state" style="display: none;">
+                <p style="color: #dc3545; font-weight: 600;">Failed to load tournament leaderboard</p>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="loadTournamentLeaderboard()">Try Again</button>
+            </div>
+
+            <div id="tournamentLeaderboardTableContainer" style="display: none;">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">Rank</th>
+                            <th>Player</th>
+                            <th style="width: 60px; text-align: center;">Wins</th>
+                            <th style="width: 60px; text-align: center;">Losses</th>
+                            <th style="width: 80px; text-align: center;">Faan</th>
+                            <th style="width: 80px; text-align: center;">Coins</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tournamentLeaderboardBody"></tbody>
+                </table>
+                <div class="update-timestamp" id="tournamentLeaderboardLastUpdated"></div>
+                <p class="helper-text">Auto-refreshes every 30 seconds</p>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;" onclick="showHome()">Back to Home</button>
+        </div>
+
+        <!-- HAND HISTORY SCREEN (ADMIN ONLY) -->
+        <div id="handHistoryScreen" class="screen">
+            <h2 style="margin-bottom: 20px; font-size: 20px; text-align: center;">
+                Hand History<span class="tournament-badge">ADMIN ONLY</span>
+            </h2>
+            <p class="helper-text" style="margin-bottom: 20px;">View and delete recent tournament hands. Deleting will reverse all stat changes.</p>
+
+            <div id="handHistoryLoading" class="loading-state">
+                <div class="loading-spinner">🀄</div>
+                <p style="margin-top: 16px;">Loading hand history...</p>
+            </div>
+
+            <div id="handHistoryError" class="error-state" style="display: none;">
+                <p style="color: #dc3545; font-weight: 600;">Failed to load hand history</p>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="loadHandHistory()">Try Again</button>
+            </div>
+
+            <div id="handHistoryContainer" style="display: none;">
+                <div id="handHistoryList"></div>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;" onclick="showHome()">Back to Home</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIGURATION =====
+        // Main sheet for members, roles, and authentication
+        const MEMBERS_SHEET_ID = '12CWCUNUzMDNLEGUywKANy3zi4TT3XYYDvuvMO7RU60w';
+        const MEMBERS_SHEET = 'MEMBERS';
+        
+        // Tournament sheets
+        const TOURNAMENT_SHEET_ID = '12CWCUNUzMDNLEGUywKANy3zi4TT3XYYDvuvMO7RU60w';
+        const TOURNAMENT_PLAYERS_SHEET = 'TOURNAMENT_PLAYERS';
+        const TOURNAMENT_HANDS_SHEET = 'TOURNAMENT_HANDS';
+        const TOURNAMENTS_SHEET = 'TOURNAMENTS';
+        
+        // Legacy regular game sheets (keeping for backward compatibility)
+        const SHEET_ID = '1Ml1FZ1h85m6WmMO6qUL-t-CwLwWxxT1HkKdYdB0VXV0';
+        const PLAYERS_SHEET = 'Players';
+        const HISTORY_SHEET = 'History';
+
+        // ===== GLOBAL STATE =====
+        let currentScreen = 'loginScreen';
+        let currentUser = null;
+        let currentUserRole = null; // Will be 'admin' or 'member' (or 'player')
+        let isAdmin = false;
+        let CLUB_MEMBERS = {}; // Will be loaded from Google Sheets
+        let membersLoaded = false;
+        let membersData = []; // All members from MEMBERS sheet
+        let leaderboardData = [];
+        let tournamentLeaderboardData = [];
+        let handHistoryData = []; // Tournament hands for admin review
+        let tournamentAutoRefreshInterval = null;
+
+        // Calculator state
+        let gameState = {
+            selectedTiles: [],
+            winType: 'selfDraw',
+            seatWind: 'east',
+            winConditions: [],
+            selectedFlowers: [],
+            currentCategory: 'characters'
+        };
+
+        // Tournament calculator state
+        let tournamentGameState = {
+            selectedWinner: null,
+            selectedTiles: [],
+            winType: 'selfDraw',
+            seatWind: 'east',
+            winConditions: [],
+            selectedFlowers: [],
+            currentCategory: 'characters'
+        };
+
+        // ===== TILES DATA =====
+        const tileCategories = {
+            characters: ['🀇', '🀈', '🀉', '🀊', '🀋', '🀌', '🀍', '🀎', '🀏'],
+            bamboo: ['🀐', '🀑', '🀒', '🀓', '🀔', '🀕', '🀖', '🀗', '🀘'],
+            dots: ['🀙', '🀚', '🀛', '🀜', '🀝', '🀞', '🀟', '🀠', '🀡'],
+            winds: ['🀀', '🀁', '🀂', '🀃'],
+            dragons: ['🀄', '🀅', '🀆']
+        };
+
+        // ===== SCORING RULES =====
+        const scoringRules = {
+            // Special hands
+            thirteenOrphans: { name: 'Thirteen Orphans', points: 13 },
+            nineGates: { name: 'Nine Gates', points: 13 },
+            allKongs: { name: 'Four Kongs', points: 13 },
+            bigThreeDragons: { name: 'Big Three Dragons', points: 8 },
+            littleFourWinds: { name: 'Little Four Winds', points: 13 },
+            bigFourWinds: { name: 'Big Four Winds', points: 13 },
+            allHonors: { name: 'All Honors', points: 10 },
+            sevenPairs: { name: 'Seven Pairs', points: 4 },
+            
+            // Purity hands
+            fullFlush: { name: 'Full Flush', points: 7 },
+            halfFlush: { name: 'Half Flush', points: 3 },
+            
+            // Triplets
+            allTriplets: { name: 'All Triplets', points: 3 },
+            threeConcealedTriplets: { name: 'Three Concealed Triplets', points: 2 },
+            
+            // Dragons & Winds
+            dragonTriplet: { name: 'Dragon Triplet', points: 1 },
+            seatWindTriplet: { name: 'Seat Wind Triplet', points: 1 },
+            prevalentWindTriplet: { name: 'Prevalent Wind Triplet', points: 1 },
+            
+            // Win conditions
+            selfDraw: { name: 'Self-Draw', points: 1 },
+            concealed: { name: 'All Concealed', points: 1 },
+            lastTile: { name: 'Last Tile', points: 1 },
+            
+            // Flowers
+            noFlowers: { name: 'No Flowers', points: 1 },
+            allFlowers: { name: 'All 8 Flowers', points: 8 }
+        };
+
+        // ===== AUTHENTICATION =====
+        async function loadMembersFromSheet() {
+            const loadingMsg = document.getElementById('loadingMessage');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            try {
+                loadingMsg.classList.add('show');
+                loginBtn.disabled = true;
+                
+                // Use Google Sheets CSV export (works for public sheets)
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${MEMBERS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${MEMBERS_SHEET}`;
+                
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                
+                // Parse CSV
+                const lines = csvText.split('\n');
+                const headers = parseCSVLine(lines[0]);
+                
+                // Find column indices (NAME | EMAIL | PHONE | ROLE)
+                const nameCol = headers.findIndex(h => h.toLowerCase().includes('name'));
+                const emailCol = headers.findIndex(h => h.toLowerCase().includes('email'));
+                const phoneCol = headers.findIndex(h => h.toLowerCase().includes('phone'));
+                const roleCol = headers.findIndex(h => h.toLowerCase().includes('role'));
+                
+                if (nameCol === -1) {
+                    throw new Error('Sheet must have a "Name" column');
+                }
+                
+                // Parse data rows (skip header)
+                CLUB_MEMBERS = {};
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    
+                    const row = parseCSVLine(lines[i]);
+                    const name = row[nameCol]?.trim();
+                    const email = emailCol !== -1 ? row[emailCol]?.trim() : '';
+                    const phone = phoneCol !== -1 ? row[phoneCol]?.trim() : '';
+                    const role = roleCol !== -1 ? row[roleCol]?.trim().toLowerCase() : 'player';
+                    
+                    if (!name) continue;
+                    
+                    const upperName = name.toUpperCase();
+                    if (email) {
+                        CLUB_MEMBERS[email.toLowerCase()] = { name: upperName, role: role };
+                    }
+                    if (phone) {
+                        CLUB_MEMBERS[phone] = { name: upperName, role: role };
+                    }
+                }
+                
+                membersLoaded = true;
+                const memberCount = Object.keys(CLUB_MEMBERS).length;
+                console.log(`✅ Loaded ${Math.floor(memberCount / 2)} members from Google Sheets`);
+                
+            } catch (error) {
+                console.error('Error loading members:', error);
+                
+                // Fallback to demo account if sheet fails
+                CLUB_MEMBERS = {
+                    'demo@email.com': { name: 'DEMO USER', role: 'player' },
+                    '5555555555': { name: 'DEMO USER', role: 'player' }
+                };
+                
+                alert('⚠️ Could not load member list from Google Sheets.\n\nUsing demo account:\nEmail: demo@email.com\nPhone: 555-555-5555\n\nPlease check:\n1. Sheet ID is correct\n2. Sheet is set to "Anyone with link" → "Viewer"\n3. Sheet name matches: MEMBERS');
+                membersLoaded = true;
+                
+            } finally {
+                loadingMsg.classList.remove('show');
+                loginBtn.disabled = false;
+            }
+        }
+
+        function normalizeIdentifier(input) {
+            // Remove all non-alphanumeric characters and convert to lowercase
+            return input.replace(/[^a-z0-9]/gi, '').toLowerCase();
+        }
+
+        function authenticateMember() {
+            if (!membersLoaded) {
+                alert('⚠️ Member list is still loading. Please wait a moment.');
+                return;
+            }
+            
+            const input = document.getElementById('memberIdentifier').value;
+            const normalized = normalizeIdentifier(input);
+            
+            // Check if member exists
+            let memberData = null;
+            for (const [key, data] of Object.entries(CLUB_MEMBERS)) {
+                if (normalizeIdentifier(key) === normalized) {
+                    memberData = data;
+                    break;
+                }
+            }
+            
+            if (memberData) {
+                // Successful login
+                currentUser = memberData.name;
+                currentUserRole = memberData.role || 'player';
+                isAdmin = (currentUserRole === 'admin');
+                
+                // Hide/show admin-only cards
+                const tournamentCalcCard = document.getElementById('tournamentCalculatorCard');
+                const handHistoryCard = document.getElementById('handHistoryCard');
+                
+                if (isAdmin) {
+                    tournamentCalcCard.classList.remove('hidden');
+                    handHistoryCard.classList.remove('hidden');
+                } else {
+                    tournamentCalcCard.classList.add('hidden');
+                    handHistoryCard.classList.add('hidden');
+                }
+                
+                // Show home screen
+                document.getElementById('errorMessage').classList.remove('show');
+                showHome();
+            } else {
+                // Failed login
+                document.getElementById('errorMessage').classList.add('show');
+            }
+        }
+
+        function showLogout() {
+            if (confirm('Log out?')) {
+                currentUser = null;
+                currentUserRole = null;
+                isAdmin = false;
+                document.getElementById('memberIdentifier').value = '';
+                showScreen('loginScreen');
+            }
+        }
+
+        // ===== SCREEN NAVIGATION =====
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+            currentScreen = screenId;
+
+            // Load data when needed
+            if (screenId === 'leaderboardScreen') {
+                loadLeaderboard();
+            } else if (screenId === 'tournamentLeaderboardScreen') {
+                loadTournamentLeaderboard();
+                startTournamentAutoRefresh();
+            } else if (screenId === 'tournamentCalculatorScreen') {
+                loadTournamentPlayers();
+            } else if (screenId === 'handHistoryScreen') {
+                loadHandHistory();
+            }
+        }
+
+        function showHome() {
+            showScreen('homeScreen');
+        }
+
+        function showCalculator() {
+            resetCalculator();
+            renderTileGrid();
+            showScreen('calculatorScreen');
+        }
+
+        function showLeaderboard() {
+            showScreen('leaderboardScreen');
+        }
+
+        function showTournamentCalculator() {
+            if (!isAdmin) {
+                alert('⚠️ ACCESS DENIED\n\nTournament Calculator is admin-only.');
+                return;
+            }
+            resetTournamentCalculator();
+            renderTournamentTileGrid();
+            showScreen('tournamentCalculatorScreen');
+        }
+
+        function showTournamentLeaderboard() {
+            showScreen('tournamentLeaderboardScreen');
+        }
+
+        function showHandHistory() {
+            if (!isAdmin) {
+                alert('⚠️ ACCESS DENIED\n\nHand History is admin-only.');
+                return;
+            }
+            showScreen('handHistoryScreen');
+        }
+
+        function toggleMenu(event) {
+            // Stop event propagation to prevent other handlers from firing
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            // Simple menu - just show alert with options
+            const options = isAdmin 
+                ? 'Calculator\nLeaderboard\nTournament Calculator (Admin)\nTournament Leaderboard\nHand History (Admin)\nLog Out'
+                : 'Calculator\nLeaderboard\nTournament Leaderboard\nLog Out';
+            alert(options);
+        }
+
+        // ===== REGULAR CALCULATOR =====
+        function resetCalculator() {
+            gameState = {
+                selectedTiles: [],
+                winType: 'selfDraw',
+                seatWind: 'east',
+                winConditions: [],
+                selectedFlowers: [],
+                currentCategory: 'characters'
+            };
+            updateSelectedTilesDisplay();
+        }
+
+        function showTileCategory(category) {
+            gameState.currentCategory = category;
+            document.querySelectorAll('.category-btn').forEach((btn, index) => {
+                btn.classList.remove('active');
+                if (Object.keys(tileCategories)[index] === category) {
+                    btn.classList.add('active');
+                }
+            });
+            renderTileGrid();
+        }
+
+        function renderTileGrid() {
+            const container = document.getElementById('tilesGridContainer');
+            const tiles = tileCategories[gameState.currentCategory];
+            
+            container.innerHTML = tiles.map(tile => 
+                `<button class="tile-btn" onclick="addTile('${tile}')">${tile}</button>`
+            ).join('');
+        }
+
+        function addTile(tile) {
+            if (gameState.selectedTiles.length >= 14) {
+                alert('⚠️ Maximum 14 tiles');
+                return;
+            }
+            gameState.selectedTiles.push(tile);
+            updateSelectedTilesDisplay();
+        }
+
+        function removeTile(index) {
+            gameState.selectedTiles.splice(index, 1);
+            updateSelectedTilesDisplay();
+        }
+
+        function updateSelectedTilesDisplay() {
+            const display = document.getElementById('selectedTilesDisplay');
+            if (gameState.selectedTiles.length === 0) {
+                display.innerHTML = '<span style="color: #6c757d; font-size: 14px;">Tap tiles to add (need 13-14)</span>';
+            } else {
+                display.innerHTML = gameState.selectedTiles.map((tile, index) => 
+                    `<div class="selected-tile" onclick="removeTile(${index})">${tile}</div>`
+                ).join('');
+            }
+        }
+
+        function selectWinType(type) {
+            gameState.winType = type;
+            document.querySelectorAll('#calculatorScreen .option-group:nth-child(1) .option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+        }
+
+        function selectSeatWind(wind) {
+            gameState.seatWind = wind;
+            document.querySelectorAll('#calculatorScreen .option-group:nth-child(2) .option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+        }
+
+        function toggleWinCondition(condition) {
+            const index = gameState.winConditions.indexOf(condition);
+            if (index > -1) {
+                gameState.winConditions.splice(index, 1);
+                event.target.classList.remove('selected');
+            } else {
+                gameState.winConditions.push(condition);
+                event.target.classList.add('selected');
+            }
+        }
+
+        function toggleFlower(flower) {
+            const index = gameState.selectedFlowers.indexOf(flower);
+            if (index > -1) {
+                gameState.selectedFlowers.splice(index, 1);
+                event.target.classList.remove('selected');
+            } else {
+                gameState.selectedFlowers.push(flower);
+                event.target.classList.add('selected');
+            }
+        }
+
+        function calculateScore() {
+            const tiles = gameState.selectedTiles;
+            
+            if (tiles.length < 13 || tiles.length > 14) {
+                alert('⚠️ NOT ENOUGH TILES\n\nNeed 13-14 tiles. You have ' + tiles.length);
+                return;
+            }
+
+            const bestHand = findBestHandComplete(tiles);
+            if (!bestHand) {
+                alert('⚠️ INVALID HAND\n\nCannot form a valid winning combination.');
+                return;
+            }
+
+            let totalPoints = 0;
+            let breakdown = [];
+
+            // Add pattern points
+            bestHand.patterns.forEach(pattern => {
+                if (scoringRules[pattern]) {
+                    breakdown.push({
+                        name: scoringRules[pattern].name,
+                        points: scoringRules[pattern].points
+                    });
+                    totalPoints += scoringRules[pattern].points;
+                }
+            });
+
+            // Add win conditions
+            if (gameState.winType === 'selfDraw') {
+                totalPoints += 1;
+                breakdown.push({ name: 'Self-Draw', points: 1 });
+            }
+
+            gameState.winConditions.forEach(condition => {
+                // Don't add "All Concealed" for special hands that are already concealed
+                if (condition === 'concealed' && 
+                    (bestHand.patterns.includes('nineGates') || 
+                     bestHand.patterns.includes('thirteenOrphans') ||
+                     bestHand.patterns.includes('sevenPairs'))) {
+                    return;
+                }
+                if (scoringRules[condition]) {
+                    totalPoints += scoringRules[condition].points;
+                    breakdown.push({ name: scoringRules[condition].name, points: scoringRules[condition].points });
+                }
+            });
+
+            // Add flower points
+            const flowerCount = gameState.selectedFlowers.length;
+            if (flowerCount === 0) {
+                totalPoints += 1;
+                breakdown.push({ name: 'No Flowers', points: 1 });
+            } else if (flowerCount === 8) {
+                totalPoints += 8;
+                breakdown.push({ name: 'All 8 Flowers', points: 8 });
+            }
+
+            if (totalPoints < 3) {
+                alert(`⚠️ INVALID HAND\n\nThis hand scores ${totalPoints} faan.\nNeed at least 3 faan to win.`);
+                return;
+            }
+
+            // Calculate payout
+            const isDealer = gameState.seatWind === 'east';
+            const isSelfDraw = gameState.winType === 'selfDraw';
+            const payout = calculatePayout(totalPoints, isDealer, isSelfDraw);
+
+            // Display results
+            displayResults(totalPoints, breakdown, payout, isDealer, isSelfDraw);
+        }
+
+        function calculatePayout(points, isDealer, isSelfDraw) {
+            const baseAmount = Math.pow(2, points);
+            
+            if (isSelfDraw) {
+                if (isDealer) {
+                    return {
+                        perPlayer: baseAmount * 2,
+                        total: baseAmount * 6,
+                        type: 'dealer-selfdraw'
+                    };
+                } else {
+                    return {
+                        fromDealer: baseAmount * 2,
+                        fromOthers: baseAmount,
+                        total: baseAmount * 4,
+                        type: 'player-selfdraw'
+                    };
+                }
+            } else {
+                if (isDealer) {
+                    return {
+                        fromDiscarder: baseAmount * 2,
+                        total: baseAmount * 2,
+                        type: 'dealer-discard'
+                    };
+                } else {
+                    return {
+                        fromDiscarder: baseAmount,
+                        total: baseAmount,
+                        type: 'player-discard'
+                    };
+                }
+            }
+        }
+
+        function displayResults(points, breakdown, payout, isDealer, isSelfDraw) {
+            // Update points display
+            document.getElementById('pointsDisplay').textContent = points;
+
+            // Show breakdown
+            const breakdownSection = document.getElementById('breakdownSection');
+            breakdownSection.innerHTML = `
+                <div style="background: white; border-radius: 8px; padding: 16px;">
+                    <h3 style="font-size: 14px; margin-bottom: 12px; color: #6c757d;">SCORING BREAKDOWN</h3>
+                    ${breakdown.map(item => `
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-size: 13px; font-weight: 600;">${item.name}</span>
+                            <span style="font-size: 13px; color: #d4af37; font-weight: 700;">+${item.points}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Show payout
+            const payoutSummary = document.getElementById('payoutSummary');
+            let payoutHTML = '';
+
+            if (isSelfDraw) {
+                if (isDealer) {
+                    payoutHTML = `
+                        <div class="payout-row">
+                            <span class="payout-label">Each Player Pays</span>
+                            <span class="payout-value">${payout.perPlayer} coins</span>
+                        </div>
+                        <div class="payout-row" style="border: 3px solid #d4af37; background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);">
+                            <span class="payout-label" style="font-size: 16px;">TOTAL WIN</span>
+                            <span class="payout-value" style="font-size: 24px;">${payout.total} coins</span>
+                        </div>
+                    `;
+                } else {
+                    payoutHTML = `
+                        <div class="payout-row">
+                            <span class="payout-label">Dealer Pays</span>
+                            <span class="payout-value">${payout.fromDealer} coins</span>
+                        </div>
+                        <div class="payout-row">
+                            <span class="payout-label">Each Player Pays</span>
+                            <span class="payout-value">${payout.fromOthers} coins</span>
+                        </div>
+                        <div class="payout-row" style="border: 3px solid #d4af37; background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);">
+                            <span class="payout-label" style="font-size: 16px;">TOTAL WIN</span>
+                            <span class="payout-value" style="font-size: 24px;">${payout.total} coins</span>
+                        </div>
+                    `;
+                }
+            } else {
+                payoutHTML = `
+                    <div class="payout-row" style="border: 3px solid #d4af37; background: linear-gradient(135deg, #fffaeb 0%, #fff 100%);">
+                        <span class="payout-label" style="font-size: 16px;">DISCARDER PAYS</span>
+                        <span class="payout-value" style="font-size: 24px;">${payout.total} coins</span>
+                    </div>
+                `;
+            }
+
+            payoutSummary.innerHTML = payoutHTML;
+
+            // Add victory effects
+            const resultsCard = document.getElementById('resultsCard');
+            resultsCard.classList.add('victory-glow');
+            createConfetti();
+
+            showScreen('resultsScreen');
+        }
+
+        function createConfetti() {
+            const colors = ['#d4af37', '#f0d78c', '#ffd700', '#ffed4e'];
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 50);
+            }
+        }
+
+        // ===== HAND VALIDATION =====
+        function findBestHandComplete(tiles) {
+            // Check special hands first
+            if (isThirteenOrphans(tiles)) {
+                return { patterns: ['thirteenOrphans'] };
+            }
+            if (isNineGates(tiles)) {
+                return { patterns: ['nineGates'] };
+            }
+            if (isSevenPairs(tiles)) {
+                return { patterns: ['sevenPairs'] };
+            }
+
+            // Check standard winning hand
+            const hand = findStandardHand(tiles);
+            if (!hand) return null;
+
+            // Analyze patterns
+            const patterns = analyzePatterns(hand, tiles);
+            return { patterns };
+        }
+
+        function isThirteenOrphans(tiles) {
+            const required = ['🀇', '🀏', '🀐', '🀘', '🀙', '🀡', '🀀', '🀁', '🀂', '🀃', '🀄', '🀅', '🀆'];
+            const tileCounts = {};
+            tiles.forEach(tile => tileCounts[tile] = (tileCounts[tile] || 0) + 1);
+            
+            let hasPair = false;
+            for (const tile of required) {
+                const count = tileCounts[tile] || 0;
+                if (count === 0) return false;
+                if (count === 2) {
+                    if (hasPair) return false;
+                    hasPair = true;
+                } else if (count !== 1) {
+                    return false;
+                }
+            }
+            return hasPair;
+        }
+
+        function isNineGates(tiles) {
+            const suits = ['characters', 'bamboo', 'dots'];
+            for (const suit of suits) {
+                const suitTiles = tileCategories[suit];
+                const counts = Array(9).fill(0);
+                let validSuit = true;
+                
+                for (const tile of tiles) {
+                    const index = suitTiles.indexOf(tile);
+                    if (index === -1) {
+                        validSuit = false;
+                        break;
+                    }
+                    counts[index]++;
+                }
+                
+                if (validSuit && counts[0] >= 3 && counts[8] >= 3 && 
+                    counts.slice(1, 8).every(c => c >= 1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function isSevenPairs(tiles) {
+            if (tiles.length !== 14) return false;
+            const tileCounts = {};
+            tiles.forEach(tile => tileCounts[tile] = (tileCounts[tile] || 0) + 1);
+            const counts = Object.values(tileCounts);
+            return counts.length === 7 && counts.every(c => c === 2);
+        }
+
+        function findStandardHand(tiles) {
+            const tileCounts = {};
+            tiles.forEach(tile => tileCounts[tile] = (tileCounts[tile] || 0) + 1);
+            
+            // Try each tile as the pair
+            for (const pairTile in tileCounts) {
+                if (tileCounts[pairTile] >= 2) {
+                    const remaining = {...tileCounts};
+                    remaining[pairTile] -= 2;
+                    
+                    if (canFormMelds(remaining)) {
+                        return { pair: pairTile, melds: extractMelds(remaining) };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function canFormMelds(tileCounts) {
+            const tiles = Object.keys(tileCounts).filter(t => tileCounts[t] > 0);
+            if (tiles.length === 0) return true;
+            
+            const tile = tiles[0];
+            const count = tileCounts[tile];
+            
+            // Try triplet
+            if (count >= 3) {
+                const newCounts = {...tileCounts};
+                newCounts[tile] -= 3;
+                if (canFormMelds(newCounts)) return true;
+            }
+            
+            // Try sequence
+            const nextTiles = getSequenceTiles(tile);
+            if (nextTiles && tileCounts[nextTiles[1]] > 0 && tileCounts[nextTiles[2]] > 0) {
+                const newCounts = {...tileCounts};
+                newCounts[tile]--;
+                newCounts[nextTiles[1]]--;
+                newCounts[nextTiles[2]]--;
+                if (canFormMelds(newCounts)) return true;
+            }
+            
+            return false;
+        }
+
+        function extractMelds(tileCounts) {
+            // Simplified - just return empty array
+            return [];
+        }
+
+        function getSequenceTiles(tile) {
+            for (const [category, tiles] of Object.entries(tileCategories)) {
+                const index = tiles.indexOf(tile);
+                if (index !== -1 && index <= tiles.length - 3) {
+                    return [tiles[index], tiles[index + 1], tiles[index + 2]];
+                }
+            }
+            return null;
+        }
+
+        function analyzePatterns(hand, tiles) {
+            const patterns = [];
+            
+            // Check for flush
+            const suits = ['characters', 'bamboo', 'dots'];
+            let suitCounts = { characters: 0, bamboo: 0, dots: 0, honors: 0 };
+            
+            tiles.forEach(tile => {
+                if (tileCategories.characters.includes(tile)) suitCounts.characters++;
+                else if (tileCategories.bamboo.includes(tile)) suitCounts.bamboo++;
+                else if (tileCategories.dots.includes(tile)) suitCounts.dots++;
+                else suitCounts.honors++;
+            });
+            
+            const nonZeroSuits = Object.values(suitCounts).filter(c => c > 0).length;
+            if (nonZeroSuits === 1 && suitCounts.honors === 0) {
+                patterns.push('fullFlush');
+            } else if (nonZeroSuits === 2 && suitCounts.honors > 0) {
+                patterns.push('halfFlush');
+            }
+            
+            // Check for all triplets
+            const tileCounts = {};
+            tiles.forEach(tile => tileCounts[tile] = (tileCounts[tile] || 0) + 1);
+            const hasTriplet = Object.values(tileCounts).some(c => c >= 3);
+            if (hasTriplet) {
+                const tripletCount = Object.values(tileCounts).filter(c => c >= 3).length;
+                if (tripletCount >= 4) patterns.push('allTriplets');
+                if (tripletCount >= 3) patterns.push('threeConcealedTriplets');
+            }
+            
+            // Check for dragon/wind triplets
+            ['🀄', '🀅', '🀆'].forEach(dragon => {
+                if ((tileCounts[dragon] || 0) >= 3) patterns.push('dragonTriplet');
+            });
+            
+            const windMap = { east: '🀀', south: '🀁', west: '🀂', north: '🀃' };
+            if ((tileCounts[windMap[gameState.seatWind]] || 0) >= 3) {
+                patterns.push('seatWindTriplet');
+            }
+            
+            return patterns;
+        }
+
+        // ===== LEADERBOARD =====
+        async function loadLeaderboard() {
+            const loadingState = document.getElementById('leaderboardLoading');
+            const errorState = document.getElementById('leaderboardError');
+            const tableContainer = document.getElementById('leaderboardTableContainer');
+
+            loadingState.style.display = 'block';
+            errorState.style.display = 'none';
+            tableContainer.style.display = 'none';
+
+            try {
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${PLAYERS_SHEET}`;
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                const lines = csvText.split('\n');
+                
+                leaderboardData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const row = parseCSVLine(lines[i]);
+                    if (!row[0] || row[0].toUpperCase() === 'NAME') continue;
+                    
+                    leaderboardData.push({
+                        name: row[0]?.trim() || '',
+                        wins: parseInt(row[1]) || 0,
+                        losses: parseInt(row[2]) || 0,
+                        faan: parseFloat(row[3]) || 0,
+                        coins: parseFloat(row[4]) || 0
+                    });
+                }
+                
+                // Sort by coins DESC, then faan DESC, then wins DESC
+                leaderboardData.sort((a, b) => {
+                    if (b.coins !== a.coins) return b.coins - a.coins;
+                    if (b.faan !== a.faan) return b.faan - a.faan;
+                    return b.wins - a.wins;
+                });
+                
+                renderLeaderboard();
+                updateStats();
+                updateTimestamp();
+                
+                loadingState.style.display = 'none';
+                tableContainer.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+            }
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result;
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = '';
+
+            leaderboardData.forEach((player, index) => {
+                const rank = index + 1;
+                let rankDisplay = rank;
+                let rankStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-weight: 700; font-size: 14px;';
+
+                if (rank === 1) {
+                    rankDisplay = '🥇';
+                    rankStyle += ' background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #2c3e50; box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);';
+                } else if (rank === 2) {
+                    rankDisplay = '🥈';
+                    rankStyle += ' background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%); color: #2c3e50; box-shadow: 0 4px 12px rgba(192, 192, 192, 0.4);';
+                } else if (rank === 3) {
+                    rankDisplay = '🥉';
+                    rankStyle += ' background: linear-gradient(135deg, #cd7f32 0%, #e89452 100%); color: white; box-shadow: 0 4px 12px rgba(205, 127, 50, 0.4);';
+                } else {
+                    rankStyle += ' background: #f8f9fa; color: #6c757d; border: 2px solid #dee2e6;';
+                }
+
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid rgba(212, 175, 55, 0.2)';
+                row.innerHTML = `
+                    <td style="padding: 16px 12px; text-align: center;">
+                        <div style="${rankStyle}">${rankDisplay}</div>
+                    </td>
+                    <td style="padding: 16px 12px; font-weight: 600; font-size: 14px; color: #2d5016;">${player.name.toUpperCase()}</td>
+                    <td style="padding: 16px 12px; text-align: center; font-weight: 700; font-size: 14px;">${player.wins}</td>
+                    <td style="padding: 16px 12px; text-align: center; font-size: 14px;">${player.losses}</td>
+                    <td style="padding: 16px 12px; text-align: center;">
+                        <span style="font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; background: #fff3cd; color: #856404; font-size: 14px;">${player.faan >= 0 ? '+' : ''}${player.faan}</span>
+                    </td>
+                    <td style="padding: 16px 12px; text-align: center;">
+                        <span style="font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; background: ${player.coins >= 0 ? '#d4f4dd' : '#fee'}; color: ${player.coins >= 0 ? '#28a745' : '#c33'}; font-size: 14px;">${player.coins >= 0 ? '+' : ''}${player.coins}</span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateStats() {
+            const totalPlayers = leaderboardData.length;
+            const totalHands = leaderboardData.reduce((sum, p) => sum + p.wins, 0);
+            
+            document.getElementById('totalPlayers').textContent = totalPlayers;
+            document.getElementById('totalHands').textContent = totalHands;
+        }
+
+        function updateTimestamp() {
+            const now = new Date();
+            const timestamp = now.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            document.getElementById('leaderboardLastUpdated').textContent = `Last updated: ${timestamp}`;
+        }
+
+        // ===== TOURNAMENT CALCULATOR =====
+        async function loadTournamentPlayers() {
+            // Load players from MEMBERS sheet (use names, not usernames)
+            const players = membersData.map(m => m.name).filter(n => n);
+            
+            if (players.length === 0) {
+                // Fallback: load from sheet if membersData not loaded
+                try {
+                    const csvUrl = `https://docs.google.com/spreadsheets/d/${MEMBERS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${MEMBERS_SHEET}`;
+                    const response = await fetch(csvUrl);
+                    const csvText = await response.text();
+                    const lines = csvText.split('\n');
+                    
+                    const loadedPlayers = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const row = parseCSVLine(lines[i]);
+                        if (row[2]) loadedPlayers.push(row[2].trim()); // Name column
+                    }
+                    renderTournamentWinnerGrid(loadedPlayers);
+                } catch (error) {
+                    console.error('Error loading tournament players:', error);
+                }
+            } else {
+                renderTournamentWinnerGrid(players);
+            }
+        }
+
+        function renderTournamentWinnerGrid(players) {
+            const grid = document.getElementById('tournamentWinnerGrid');
+            grid.innerHTML = players.map(player => `
+                <div class="player-card" onclick="selectTournamentWinner('${player}')">
+                    <div class="player-name">${player.toUpperCase()}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectTournamentWinner(player) {
+            tournamentGameState.selectedWinner = player;
+            document.querySelectorAll('#tournamentWinnerGrid .player-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.textContent.trim() === player.toUpperCase()) {
+                    card.classList.add('selected');
+                }
+            });
+        }
+
+        function resetTournamentCalculator() {
+            tournamentGameState = {
+                selectedWinner: null,
+                selectedTiles: [],
+                winType: 'selfDraw',
+                seatWind: 'east',
+                winConditions: [],
+                selectedFlowers: [],
+                currentCategory: 'characters'
+            };
+            updateTournamentSelectedTilesDisplay();
+        }
+
+        function showTournamentTileCategory(category) {
+            tournamentGameState.currentCategory = category;
+            document.querySelectorAll('#tournamentCalculatorScreen .category-btn').forEach((btn, index) => {
+                btn.classList.remove('active');
+                if (Object.keys(tileCategories)[index] === category) {
+                    btn.classList.add('active');
+                }
+            });
+            renderTournamentTileGrid();
+        }
+
+        function renderTournamentTileGrid() {
+            const container = document.getElementById('tournamentTilesGridContainer');
+            const tiles = tileCategories[tournamentGameState.currentCategory];
+            
+            container.innerHTML = tiles.map(tile => 
+                `<button class="tile-btn" onclick="addTournamentTile('${tile}')">${tile}</button>`
+            ).join('');
+        }
+
+        function addTournamentTile(tile) {
+            if (tournamentGameState.selectedTiles.length >= 14) {
+                alert('⚠️ Maximum 14 tiles');
+                return;
+            }
+            tournamentGameState.selectedTiles.push(tile);
+            updateTournamentSelectedTilesDisplay();
+        }
+
+        function removeTournamentTile(index) {
+            tournamentGameState.selectedTiles.splice(index, 1);
+            updateTournamentSelectedTilesDisplay();
+        }
+
+        function updateTournamentSelectedTilesDisplay() {
+            const display = document.getElementById('tournamentSelectedTilesDisplay');
+            if (tournamentGameState.selectedTiles.length === 0) {
+                display.innerHTML = '<span style="color: #6c757d; font-size: 14px;">Tap tiles to add (need 13-14)</span>';
+            } else {
+                display.innerHTML = tournamentGameState.selectedTiles.map((tile, index) => 
+                    `<div class="selected-tile" onclick="removeTournamentTile(${index})">${tile}</div>`
+                ).join('');
+            }
+        }
+
+        function selectTournamentWinType(type) {
+            tournamentGameState.winType = type;
+            document.querySelectorAll('#tournamentCalculatorScreen .option-group:nth-child(1) .option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+        }
+
+        function selectTournamentSeatWind(wind) {
+            tournamentGameState.seatWind = wind;
+            document.querySelectorAll('#tournamentCalculatorScreen .option-group:nth-child(2) .option-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+        }
+
+        function toggleTournamentWinCondition(condition) {
+            const index = tournamentGameState.winConditions.indexOf(condition);
+            if (index > -1) {
+                tournamentGameState.winConditions.splice(index, 1);
+                event.target.classList.remove('selected');
+            } else {
+                tournamentGameState.winConditions.push(condition);
+                event.target.classList.add('selected');
+            }
+        }
+
+        function toggleTournamentFlower(flower) {
+            const index = tournamentGameState.selectedFlowers.indexOf(flower);
+            if (index > -1) {
+                tournamentGameState.selectedFlowers.splice(index, 1);
+                event.target.classList.remove('selected');
+            } else {
+                tournamentGameState.selectedFlowers.push(flower);
+                event.target.classList.add('selected');
+            }
+        }
+
+        async function submitTournamentHand() {
+            if (!tournamentGameState.selectedWinner) {
+                alert('⚠️ SELECT WINNER\n\nPlease select the winner.');
+                return;
+            }
+
+            const tiles = tournamentGameState.selectedTiles;
+            if (tiles.length < 13 || tiles.length > 14) {
+                alert('⚠️ NOT ENOUGH TILES\n\nNeed 13-14 tiles. Current: ' + tiles.length);
+                return;
+            }
+            
+            const bestHand = findBestHandComplete(tiles);
+            if (!bestHand) {
+                alert('⚠️ INVALID HAND\n\nCannot form a valid winning combination.');
+                return;
+            }
+            
+            // Calculate points and payout
+            const result = calculateTournamentScore(bestHand);
+            if (result.totalPoints < 3) {
+                alert(`⚠️ INVALID HAND\n\nThis hand scores ${result.totalPoints} faan.\nNeed at least 3 faan to win.`);
+                return;
+            }
+            
+            // Determine losers based on win type
+            // CRITICAL: Only track a loss if someone DISCARDED the winning tile
+            let loserName = null;
+            if (tournamentGameState.winType === 'discard') {
+                // Win on discard - ask who discarded
+                const allPlayers = membersData.map(m => m.name).filter(n => n && n !== tournamentGameState.selectedWinner);
+                const loserOptions = allPlayers.map((p, i) => `${i + 1}. ${p}`).join('\n');
+                const loserChoice = prompt(`WHO DISCARDED THE WINNING TILE?\n\n${loserOptions}\n\nEnter number (1-${allPlayers.length}):`);
+                
+                if (!loserChoice) {
+                    alert('⚠️ CANCELLED\n\nHand not recorded.');
+                    return;
+                }
+                
+                const loserIndex = parseInt(loserChoice) - 1;
+                if (loserIndex >= 0 && loserIndex < allPlayers.length) {
+                    loserName = allPlayers[loserIndex];
+                } else {
+                    alert('⚠️ INVALID SELECTION\n\nHand not recorded.');
+                    return;
+                }
+            }
+            // If self-draw or draw: loserName stays null (no one gets a loss)
+            
+            // Write to Google Sheets (in production)
+            await writeTournamentHand(tournamentGameState.selectedWinner, loserName, result);
+            
+            // Show success
+            if (loserName) {
+                alert(`✅ HAND RECORDED!\n\n${tournamentGameState.selectedWinner} wins ${result.totalPoints} faan for ${result.payout.total} coins\n\n${loserName} discarded the winning tile (loss recorded)`);
+            } else {
+                alert(`✅ HAND RECORDED!\n\n${tournamentGameState.selectedWinner} wins ${result.totalPoints} faan for ${result.payout.total} coins\n\n(Self-draw - no losses recorded)`);
+            }
+            
+            resetTournamentCalculator();
+            showHome();
+        }
+
+        function calculateTournamentScore(bestHand) {
+            let totalPoints = 0;
+            let breakdown = [];
+            
+            // Add pattern points
+            bestHand.patterns.forEach(pattern => {
+                if (scoringRules[pattern]) {
+                    breakdown.push({
+                        name: scoringRules[pattern].name,
+                        points: scoringRules[pattern].points
+                    });
+                    totalPoints += scoringRules[pattern].points;
+                }
+            });
+            
+            // Add win conditions
+            if (tournamentGameState.winType === 'selfDraw') {
+                totalPoints += 1;
+            }
+            
+            tournamentGameState.winConditions.forEach(condition => {
+                if (condition === 'concealed' && 
+                    (bestHand.patterns.includes('nineGates') || 
+                     bestHand.patterns.includes('thirteenOrphans') ||
+                     bestHand.patterns.includes('sevenPairs'))) {
+                    return;
+                }
+                if (scoringRules[condition]) {
+                    totalPoints += scoringRules[condition].points;
+                }
+            });
+            
+            // Add flower points
+            const flowerCount = tournamentGameState.selectedFlowers.length;
+            if (flowerCount === 0) totalPoints += 1;
+            else if (flowerCount === 8) totalPoints += 8;
+            
+            const isDealer = tournamentGameState.seatWind === 'east';
+            const isSelfDraw = tournamentGameState.winType === 'selfDraw';
+            const payout = calculatePayout(totalPoints, isDealer, isSelfDraw);
+            
+            return { totalPoints, payout, breakdown, isDealer, isSelfDraw };
+        }
+
+        async function writeTournamentHand(winnerName, loserName, result) {
+            // Prepare data for Google Sheets
+            const handData = {
+                timestamp: new Date().toISOString(),
+                winner: winnerName,
+                loser: loserName || 'NONE', // 'NONE' for self-draw or draw
+                faan: result.totalPoints,
+                coins: result.payout.total,
+                winType: tournamentGameState.winType,
+                seatWind: tournamentGameState.seatWind,
+                breakdown: result.breakdown.map(b => `${b.name} (${b.points})`).join(', ')
+            };
+            
+            // In production: Send to Google Apps Script Web App
+            // The Apps Script will:
+            // 1. Record hand in TOURNAMENT_HANDS sheet
+            // 2. Update winner's wins and coins in TOURNAMENT_PLAYERS
+            // 3. Update loser's losses in TOURNAMENT_PLAYERS (only if loserName is not 'NONE')
+            
+            console.log('Tournament hand data:', handData);
+            
+            // TODO: Replace with actual Google Apps Script Web App URL
+            // Example:
+            // const scriptUrl = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+            // await fetch(scriptUrl, {
+            //     method: 'POST',
+            //     body: JSON.stringify(handData)
+            // });
+            
+            // For now, just trigger leaderboard refresh after a delay
+            setTimeout(() => loadTournamentLeaderboard(), 1000);
+        }
+
+        // ===== TOURNAMENT LEADERBOARD =====
+        async function loadTournamentLeaderboard() {
+            const loadingState = document.getElementById('tournamentLeaderboardLoading');
+            const errorState = document.getElementById('tournamentLeaderboardError');
+            const tableContainer = document.getElementById('tournamentLeaderboardTableContainer');
+
+            loadingState.style.display = 'block';
+            errorState.style.display = 'none';
+            tableContainer.style.display = 'none';
+
+            try {
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${TOURNAMENT_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${TOURNAMENT_PLAYERS_SHEET}`;
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                const lines = csvText.split('\n');
+                
+                tournamentLeaderboardData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const row = parseCSVLine(lines[i]);
+                    if (!row[0] || row[0].toUpperCase() === 'NAME') continue;
+                    
+                    tournamentLeaderboardData.push({
+                        name: row[0]?.trim() || '',
+                        wins: parseInt(row[1]) || 0,
+                        losses: parseInt(row[2]) || 0,
+                        faan: parseFloat(row[3]) || 0,
+                        coins: parseFloat(row[4]) || 0
+                    });
+                }
+                
+                // Sort by coins DESC, then faan DESC, then wins DESC
+                tournamentLeaderboardData.sort((a, b) => {
+                    if (b.coins !== a.coins) return b.coins - a.coins;
+                    if (b.faan !== a.faan) return b.faan - a.faan;
+                    return b.wins - a.wins;
+                });
+                
+                renderTournamentLeaderboard();
+                updateTournamentStats();
+                updateTournamentTimestamp();
+                
+                loadingState.style.display = 'none';
+                tableContainer.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading tournament leaderboard:', error);
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+            }
+        }
+
+        function renderTournamentLeaderboard() {
+            const tbody = document.getElementById('tournamentLeaderboardBody');
+            tbody.innerHTML = '';
+
+            tournamentLeaderboardData.forEach((player, index) => {
+                const rank = index + 1;
+                let rankDisplay = rank;
+                let rankStyle = 'display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-weight: 700; font-size: 14px;';
+
+                if (rank === 1) {
+                    rankDisplay = '🥇';
+                    rankStyle += ' background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #2c3e50; box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);';
+                } else if (rank === 2) {
+                    rankDisplay = '🥈';
+                    rankStyle += ' background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%); color: #2c3e50; box-shadow: 0 4px 12px rgba(192, 192, 192, 0.4);';
+                } else if (rank === 3) {
+                    rankDisplay = '🥉';
+                    rankStyle += ' background: linear-gradient(135deg, #cd7f32 0%, #e89452 100%); color: white; box-shadow: 0 4px 12px rgba(205, 127, 50, 0.4);';
+                } else {
+                    rankStyle += ' background: #f8f9fa; color: #6c757d; border: 2px solid #dee2e6;';
+                }
+
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid rgba(212, 175, 55, 0.2)';
+                row.innerHTML = `
+                    <td style="padding: 16px 12px; text-align: center;">
+                        <div style="${rankStyle}">${rankDisplay}</div>
+                    </td>
+                    <td style="padding: 16px 12px; font-weight: 600; font-size: 14px; color: #2d5016;">${player.name.toUpperCase()}</td>
+                    <td style="padding: 16px 12px; text-align: center; font-weight: 700; font-size: 14px;">${player.wins}</td>
+                    <td style="padding: 16px 12px; text-align: center; font-size: 14px;">${player.losses}</td>
+                    <td style="padding: 16px 12px; text-align: center;">
+                        <span style="font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; background: #fff3cd; color: #856404; font-size: 14px;">${player.faan >= 0 ? '+' : ''}${player.faan}</span>
+                    </td>
+                    <td style="padding: 16px 12px; text-align: center;">
+                        <span style="font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; background: ${player.coins >= 0 ? '#d4f4dd' : '#fee'}; color: ${player.coins >= 0 ? '#28a745' : '#c33'}; font-size: 14px;">${player.coins >= 0 ? '+' : ''}${player.coins}</span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateTournamentStats() {
+            const totalPlayers = tournamentLeaderboardData.length;
+            const totalHands = tournamentLeaderboardData.reduce((sum, p) => sum + p.wins, 0);
+            
+            document.getElementById('tournamentTotalPlayers').textContent = totalPlayers;
+            document.getElementById('tournamentTotalHands').textContent = totalHands;
+        }
+
+        function updateTournamentTimestamp() {
+            const now = new Date();
+            const timestamp = now.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            document.getElementById('tournamentLeaderboardLastUpdated').textContent = `Last updated: ${timestamp}`;
+        }
+
+        function startTournamentAutoRefresh() {
+            // Clear existing interval
+            if (tournamentAutoRefreshInterval) {
+                clearInterval(tournamentAutoRefreshInterval);
+            }
+            
+            // Refresh every 30 seconds
+            tournamentAutoRefreshInterval = setInterval(() => {
+                if (currentScreen === 'tournamentLeaderboardScreen') {
+                    loadTournamentLeaderboard();
+                }
+            }, 30000);
+        }
+
+        // Stop auto-refresh when leaving
+        window.addEventListener('beforeunload', () => {
+            if (tournamentAutoRefreshInterval) {
+                clearInterval(tournamentAutoRefreshInterval);
+            }
+        });
+
+        // ===== HAND HISTORY (ADMIN ONLY) =====
+        async function loadHandHistory() {
+            const loadingState = document.getElementById('handHistoryLoading');
+            const errorState = document.getElementById('handHistoryError');
+            const container = document.getElementById('handHistoryContainer');
+
+            loadingState.style.display = 'block';
+            errorState.style.display = 'none';
+            container.style.display = 'none';
+
+            try {
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${TOURNAMENT_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${TOURNAMENT_HANDS_SHEET}`;
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                const lines = csvText.split('\n');
+                
+                handHistoryData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const row = parseCSVLine(lines[i]);
+                    if (!row[0]) continue; // Skip empty rows
+                    
+                    handHistoryData.push({
+                        rowIndex: i + 1, // Sheet row number (1-indexed, +1 for header)
+                        timestamp: row[0]?.trim() || '',
+                        winner: row[1]?.trim() || '',
+                        loser: row[2]?.trim() || '',
+                        faan: parseInt(row[3]) || 0,
+                        coins: parseInt(row[4]) || 0,
+                        winType: row[5]?.trim() || '',
+                        seatWind: row[6]?.trim() || '',
+                        breakdown: row[7]?.trim() || ''
+                    });
+                }
+                
+                // Sort by most recent first
+                handHistoryData.reverse();
+                
+                renderHandHistory();
+                
+                loadingState.style.display = 'none';
+                container.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading hand history:', error);
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+            }
+        }
+
+        function renderHandHistory() {
+            const list = document.getElementById('handHistoryList');
+            
+            if (handHistoryData.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 40px 20px;">No hands recorded yet.</p>';
+                return;
+            }
+
+            list.innerHTML = handHistoryData.slice(0, 20).map((hand, index) => `
+                <div style="background: white; border: 2px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 8px;">${formatTimestamp(hand.timestamp)}</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #2d5016; margin-bottom: 4px;">
+                                ${hand.winner} WINS
+                            </div>
+                            <div style="font-size: 14px; color: #6c757d;">
+                                ${hand.loser === 'NONE' ? 'Self-Draw' : `${hand.loser} discarded`}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 24px; font-weight: 700; color: #d4af37;">${hand.faan}</div>
+                            <div style="font-size: 12px; color: #6c757d;">FAAN</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 11px; color: #6c757d;">PAYOUT</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #28a745;">${hand.coins} coins</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 11px; color: #6c757d;">WIN TYPE</div>
+                            <div style="font-size: 14px; font-weight: 600; text-transform: capitalize;">${hand.winType === 'selfDraw' ? 'Self-Draw' : 'Discard'}</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 11px; color: #6c757d;">SEAT</div>
+                            <div style="font-size: 14px; font-weight: 600; text-transform: capitalize;">${hand.seatWind}</div>
+                        </div>
+                    </div>
+                    
+                    ${hand.breakdown ? `
+                        <div style="font-size: 12px; color: #6c757d; margin-bottom: 12px; padding: 8px; background: white; border-radius: 6px; border: 1px solid #e0e0e0;">
+                            ${hand.breakdown}
+                        </div>
+                    ` : ''}
+                    
+                    <button 
+                        class="btn btn-danger" 
+                        style="width: 100%; padding: 12px; font-size: 14px;"
+                        onclick="confirmDeleteHand(${index})">
+                        🗑️ Delete This Hand
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+            
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function confirmDeleteHand(index) {
+            const hand = handHistoryData[index];
+            
+            const confirmMsg = `⚠️ DELETE HAND?\n\n` +
+                `Winner: ${hand.winner} (+${hand.faan} faan, +${hand.coins} coins)\n` +
+                `${hand.loser !== 'NONE' ? `Loser: ${hand.loser} (+1 loss)\n` : ''}` +
+                `Time: ${formatTimestamp(hand.timestamp)}\n\n` +
+                `This will:\n` +
+                `• Remove ${hand.faan} faan and ${hand.coins} coins from ${hand.winner}\n` +
+                `• Remove 1 win from ${hand.winner}\n` +
+                `${hand.loser !== 'NONE' ? `• Remove 1 loss from ${hand.loser}\n` : ''}` +
+                `\nCannot be undone. Continue?`;
+            
+            if (confirm(confirmMsg)) {
+                deleteHand(hand);
+            }
+        }
+
+        async function deleteHand(hand) {
+            try {
+                // Prepare delete request
+                const deleteData = {
+                    action: 'delete',
+                    rowIndex: hand.rowIndex,
+                    winner: hand.winner,
+                    loser: hand.loser,
+                    faan: hand.faan,
+                    coins: hand.coins
+                };
+                
+                // In production: Send to Google Apps Script
+                // const scriptUrl = 'YOUR_WEB_APP_URL';
+                // await fetch(scriptUrl, {
+                //     method: 'POST',
+                //     mode: 'no-cors',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify(deleteData)
+                // });
+                
+                console.log('Delete request:', deleteData);
+                
+                alert('✅ HAND DELETED\n\nStats have been reversed. Refresh may take a moment.');
+                
+                // Reload both hand history and tournament leaderboard
+                loadHandHistory();
+                loadTournamentLeaderboard();
+                
+            } catch (error) {
+                console.error('Error deleting hand:', error);
+                alert('⚠️ DELETE FAILED\n\nCould not delete hand. Please try again.');
+            }
+        }
+
+        // ===== INITIALIZE =====
+        window.addEventListener('load', () => {
+            renderTileGrid();
+            loadMembersFromSheet();
+        });
+    </script>
+</body>
+</html>
